@@ -9,10 +9,10 @@ Status: Vorschlag, nicht mit Kunde oder Beckhoff bestätigt. **Vor dem Ändern n
 - `GVL_HMI.stCmd : ST_HmiCmd` (HMI an SPS), `GVL_HMI.stSts : ST_HmiSts` (SPS an HMI). Impulse erkennt die SPS per Flanke, die HMI setzt sie für mindestens einen Zyklus. `nHeartbeat` zählt die HMI hoch.
 - Die HMI fordert nur an. Verriegelungen liegen in der SPS. Das HMI schaltet nie direkt Ausgänge oder Antriebe (Ausnahme: Service-Ausgangstest im Stillstand, Annahme).
 - Logische Achsen für die HMI: 1 = X (Quer), 2 = Y (Portal, zwei Motoren Y1/Y2 als Gantry), 3 = Z. Zuordnung X/Y/Z **[Annahme]**. Die Antriebe 1..4 erscheinen nur in der Diagnose.
-- CNC-Werte (Positionen, Overrides, Satz, Werkzeug- und Nullpunkttabelle, Programmverwaltung) liest und schreibt die HMI über das CNC-Datenmodell der TF5310 (Rückfall TF2000: über SPS-Variablen).
+- Auf dem Laptop ist nur TF2000 installiert (kein TF5310, kein TF5200). CNC-Werte (Positionen, Overrides, Satz, Programm, Werkzeug- und Nullpunkttabelle) laufen deshalb über den Spiegel `GVL_HmiCnc.stCncSts : ST_HmiCncSts` und `stCncCmd : ST_HmiCncCmd` (SPS-Thread). Kommt TF5310 später, ändert sich nur die Befüllung in der SPS, die HMI-Bindung bleibt. Programm laden und Tabellen schreiben nur im Stillstand (Idle oder Hand), sonst `bTableWriteRejected`.
 - Sicherheitsfunktionen bleiben hart verdrahtet. Die HMI zeigt nur Status. STOPP am Bildschirm ist ein Software-Stopp und ersetzt keinen Not-Halt.
 
-Quelle: Cmd = `stCmd`, Sts = `stSts`, CNC = TF5310-Datenmodell, Param = `ST_MachineParams`, HMI = nur im HMI-Server. Status: **vorhanden** = Feld existiert in `ST_HmiCmd`/`ST_HmiSts`, **fehlt** = Wunsch an den SPS-Thread, Annahme, offen. Stand 05.11. 21:24: alle Wünsche der HMI bis auf aDI/aDO und getrennte Feldbuszustände sind in den Typen.
+Quelle: Cmd = `stCmd`, Sts = `stSts`, CncSts/CncCmd = `GVL_HmiCnc`, Param = `ST_MachineParams`, HMI = nur im HMI-Server. Status: **vorhanden** = Feld existiert in `ST_HmiCmd`/`ST_HmiSts`, **fehlt** = Wunsch an den SPS-Thread, Annahme, offen. Stand 05.11. 21:24: alle Wünsche der HMI bis auf aDI/aDO und getrennte Feldbuszustände sind in den Typen.
 
 ## In jedem Bild: Kopfzeile und Meldezeile
 
@@ -38,15 +38,15 @@ Alle Betriebsdaten auf einen Blick. Startseite nach dem Anmelden und Rückfallse
 
 | Variable | Typ | Richtung | Quelle | Einheit / Hinweis | Status |
 |---|---|---|---|---|---|
-| Achsen X, Y, Z: Ist-Position (Maschine, Werkstück) | LREAL | S->H | CNC | mm; Y = Gantry-Paar, ein logischer Kanal | Annahme |
-| Gantry: Differenz Y1 zu Y2 | LREAL | S->H | CNC | mm | Annahme |
-| Achsen: referenziert je Achse | BOOL | S->H | CNC | zusätzlich stSts.bAllHomed | Annahme |
+| GVL_HmiCnc.stCncSts.aAxis[1..3].rActPosMach / rActPosWork | LREAL | S->H | CncSts | mm, 1=X 2=Y 3=Z; Y = Gantry-Paar | Annahme |
+| stCncSts.rGantryDiffMm | LREAL | S->H | CncSts | mm, Y1 gegen Y2 | Annahme |
+| stCncSts.aAxis[1..3].bHomed | BOOL | S->H | CncSts | zusätzlich stSts.bAllHomed | Annahme |
 | stSts.bSpindleRunning / rSpindleActRpm | BOOL / REAL | S->H | Sts | 1/min, max. 16.600 | vorhanden |
 | stSts.bExtractionOn / bBlowAirOn / bVacuumOn | BOOL | S->H | Sts |  | vorhanden |
-| Overrides Vorschub, Eilgang, Spindel | UINT | S->H | CNC | % | Annahme |
-| Programmname, aktueller Satz, Vorschub-Ist | STRING / UDINT / LREAL | S->H | CNC |  | Annahme |
-| Stückzähler Ist/Soll | UDINT | S->H | CNC | G-Code-Zähler oder SPS, offen | offen |
-| aktives Werkzeug, aktiver Nullpunkt | UINT | S->H | CNC | T-Nr., G54..G59 | Annahme |
+| stCncSts.nOvrFeed / nOvrRapid / nOvrSpindle | UINT | S->H | CncSts | % | Annahme |
+| stCncSts.sProgramName / nActBlock / nTotalBlocks / rFeedAct | STRING / UDINT / LREAL | S->H | CncSts |  | Annahme |
+| Stückzähler Ist/Soll | UDINT | S->H | CncSts | nicht in der Grundversion, offen | offen |
+| stCncSts.nActTool / nActWcs | UINT | S->H | CncSts | T-Nr., 54..59 | Annahme |
 
 ## Hand
 
@@ -57,12 +57,12 @@ Achsen verfahren per Touch oder Handrad, Schrittweiten, Eilgang, Spindel und Hil
 | stCmd.bJogPlus / bJogMinus / nJogAxis | BOOL / USINT | H->S | Cmd | gehalten, 1=X 2=Y 3=Z | vorhanden |
 | stCmd.bJogRapid | BOOL | H->S | Cmd | Eilgang beim Tippen | vorhanden |
 | stCmd.rJogStepMm | REAL | H->S | Cmd | 0 = kontinuierlich, sonst 0,01 / 0,1 / 1 / 10 mm | vorhanden |
-| Tipp-Override | UINT | H->S | CNC | %, über CNC-Override | Annahme |
+| stCncCmd.nOvrFeed | UINT | H->S | CncCmd | 0..120 %, Tipp-Override zusätzlich offen | Annahme |
 | stCmd.bHandwheelEnable / nHandwheelAxis / nHandwheelRatio | BOOL / USINT / USINT | H->S | Cmd | Achse 1=X 2=Y 3=Z, Untersetzung 1/10/100; nur M1 mit Bestandsgerät | vorhanden |
 | stSts.bHandwheelActive | BOOL | S->H | Sts |  | vorhanden |
 | stCmd.bSpindleOn / bSpindleCcw / rSpindleSetRpm | BOOL / BOOL / REAL | H->S | Cmd | nur Hand, 1/min | vorhanden |
 | stCmd.bExtraction / bBlowAir / bVacuum | BOOL | H->S | Cmd |  | vorhanden |
-| Nullpunkt setzen (aktuelle Position) | Aktion | H->S | CNC | CNC-Nullpunktverschiebung direkt | Annahme |
+| stCncCmd.bWcsSetCurrent | BOOL | H->S | CncCmd | Position als Nullpunkt; nur Stillstand, sonst bTableWriteRejected | Annahme |
 
 ## Referenz
 
@@ -89,10 +89,10 @@ Programmlauf mit Satzanzeige, Overrides, Einzelsatz, Trockenlauf. Funktionsliste
 | stCmd.bHold | BOOL | H->S | Cmd | Impuls, Vorschubhalt | vorhanden |
 | stCmd.bAbort | BOOL | H->S | Cmd | Impuls, Programmabbruch | vorhanden |
 | stCmd.bSingleBlock / bDryRun / bOptStop | BOOL | H->S | Cmd | Einzelsatz, Trockenlauf (Spindel gesperrt), optionaler Halt M01 | vorhanden |
-| Overrides Vorschub, Eilgang, Spindel | UINT | H->S | CNC | %, direkt am CNC-Kanal | Annahme |
-| Satznummer, Satztext (Fenster), Restweg | UDINT / STRING / LREAL | S->H | CNC | Programmanzeige aus TF5310 G-Code-Editor | Annahme |
+| stCncCmd.nOvrFeed / nOvrRapid / nOvrSpindle | UINT | H->S | CncCmd | 0..120 / 0..100 / 50..120 %, SPS begrenzt | Annahme |
+| stCncSts.nActBlock / sBlockText[0..6] / rRestMm | UDINT / STRING(80) / LREAL | S->H | CncSts | Index 3 = aktueller Satz | Annahme |
 | stSts.eState | E_MachState | S->H | Sts | Execute, Held, Aborted | vorhanden |
-| Laufzeit, Restzeit | TIME | S->H | CNC | Restzeit nur wenn die CNC sie liefert | offen |
+| Laufzeit, Restzeit | TIME | S->H | CncSts | nicht in der Grundversion, offen | offen |
 | stSts.bToolChangeReq / nToolChangeNo | BOOL / UINT | S->H | Sts | Aufforderung bei M6 | vorhanden |
 
 ## Programme
@@ -102,8 +102,8 @@ Programm aus dem Freigabeordner wählen und laden, Schnellauswahl. Funktionslist
 | Variable | Typ | Richtung | Quelle | Einheit / Hinweis | Status |
 |---|---|---|---|---|---|
 | Dateiliste Programmordner | Verzeichnisliste | S->H | HMI | Name, Größe, Datum; Pfad und Namenskonvention offen | offen |
-| Programm wählen und laden | STRING / Aktion | H->S | CNC | Programmverwaltung der TF5310, keine SPS-Variable nötig | Annahme |
-| Ladestatus, Syntaxfehler (Klartext) | ENUM / STRING | S->H | CNC |  | Annahme |
+| stCncCmd.sProgramSelect / bProgramLoad | STRING(255) / BOOL | H->S | CncCmd | nur im Stillstand (Idle oder Hand) | Annahme |
+| stCncSts.bProgramLoaded / sProgramName | BOOL / STRING | S->H | CncSts | Syntaxfehler im Klartext offen | Annahme |
 | Programm löschen | Aktion | H->S | HMI | nur Einrichter und Service | Annahme |
 | Schnellauswahl 1..8 | ARRAY OF STRING | - | HMI | Serienfertigung, optional | Annahme |
 
@@ -113,7 +113,7 @@ Werkzeugtabelle mit Nummer, Länge, Radius; manueller Werkzeugwechsel. Funktions
 
 | Variable | Typ | Richtung | Quelle | Einheit / Hinweis | Status |
 |---|---|---|---|---|---|
-| Werkzeugtabelle [1..N] | CNC-Werkzeugdaten | S->H / H->S | CNC | Nummer, Name, Länge, Radius, Verschleiß | Annahme |
+| stCncSts.aTool[1..32] / stCncCmd.aTool[1..32] + bTableWrite | nNo, sName, rLength, rRadius | S->H / H->S | CncSts | Schreibpuffer mit Impuls; nur Stillstand, Rückmeldung bTableWriteOk / bTableWriteRejected | Annahme |
 | stSts.bToolChangeReq / nToolChangeNo | BOOL / UINT | S->H | Sts | M6 manuell: Programm hält, Aufforderung | vorhanden |
 | stCmd.bToolChangeDone | BOOL | H->S | Cmd | Impuls, Quittung | vorhanden |
 | Werkzeuglänge messen | BOOL | H->S | Cmd | nur mit Taster (EL1252), Option | offen |
@@ -125,10 +125,10 @@ Werkstücknullpunkte G54 bis G59 anzeigen, antasten, setzen. Funktionsliste: 2.2
 
 | Variable | Typ | Richtung | Quelle | Einheit / Hinweis | Status |
 |---|---|---|---|---|---|
-| Nullpunkttabelle G54..G59 [X, Y, Z] | LREAL | S->H / H->S | CNC | mm | Annahme |
-| aktiver Nullpunkt | UINT | S->H | CNC | 54..59 | Annahme |
-| Position als Nullpunkt setzen (je Achse) | Aktion | H->S | CNC | im Stillstand | Annahme |
-| Ist-Position X, Y, Z | LREAL | S->H | CNC | mm Maschinenkoordinaten | Annahme |
+| stCncSts.aWcs[54..59] / stCncCmd.aWcs[54..59] + bTableWrite | rX, rY, rZ | S->H / H->S | CncSts | mm | Annahme |
+| stCncSts.nActWcs | UINT | S->H | CncSts | 54..59 | Annahme |
+| stCncCmd.bWcsSetCurrent | BOOL | H->S | CncCmd | nur Stillstand | Annahme |
+| stCncSts.aAxis[1..3].rActPosMach | LREAL | S->H | CncSts | mm Maschinenkoordinaten | Annahme |
 
 ## Meldungen
 
@@ -147,7 +147,7 @@ Achsstatus, Schleppabstand, Ein- und Ausgänge, Spindel und Feldbus. Funktionsli
 
 | Variable | Typ | Richtung | Quelle | Einheit / Hinweis | Status |
 |---|---|---|---|---|---|
-| Achsen: Schleppabstand, Ist-Geschwindigkeit | LREAL | S->H | CNC | mm, mm/min | Annahme |
+| stSts.aDrive[1..4].rFollowErr | LREAL | S->H | Sts | mm; Ist-Geschwindigkeit nicht vorgesehen | vorhanden |
 | stSts.aDrive[1..4] | ST_AxisDrive | S->H | Sts | bReady, bEnabled, bFault, nFaultCode, rFollowErr; 1=Y1 2=Y2 3=X 4=Z [Annahme] | vorhanden |
 | stSts.bFieldbusOk | BOOL | S->H | Sts | Sammelstatus, Alarm 310; getrennte Zustände EtherCAT/CANopen nicht vorgesehen | vorhanden |
 | stSts.bFuFault / bPtcTrip | BOOL | S->H | Sts | Rohsignale, zusätzlich Alarme 200 und 201 | vorhanden |
@@ -163,7 +163,7 @@ Anmeldung, Parameter, Software-Endschalter, Wartung, Sicherung, Version. Funktio
 |---|---|---|---|---|---|
 | Anmeldung, Benutzer, Passwörter | Benutzerverwaltung | - | HMI | Bediener, Einrichter, Service | Annahme |
 | Maschinenparameter | ST_MachineParams | S->H / H->S | Param | ein Software-Stand für M1 bis M4 | vorhanden |
-| Software-Endschalter je Achse | LREAL | S->H / H->S | CNC | mm, min und max | Annahme |
+| Software-Endschalter je Achse | LREAL | S->H / H->S | Param | mm, min und max; Feld in ST_MachineParams prüfen | offen |
 | stSts.dwOperatingSec / dwSpindleSec | UDINT | S->H | Sts | Wartungsanzeige; Intervalle in ST_MachineParams | vorhanden |
 | stSts.sSwVersion | STRING(15) | S->H | Sts | SPS-Stand; HMI- und Parameterstand zusätzlich | vorhanden |
 | Sicherung, Wiederherstellung | Dateiaktion | - | HMI | Programme, Werkzeuge, Parameter | Annahme |

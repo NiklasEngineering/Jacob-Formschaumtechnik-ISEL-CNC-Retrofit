@@ -1,6 +1,6 @@
 # P-016 HMI (Bedienoberfläche M1)
 
-Stand 05.11.2026, Entwurf. Gerät: Panel-PC CP2221, 21,5 Zoll, TwinCAT HMI (TF5310 CNC HMI Base, Rückfall TF2000).
+Stand 05.11.2026, Entwurf. Gerät: Panel-PC CP2221, 21,5 Zoll, TwinCAT HMI (TF2000, Standard-Controls; TF5310 ist auf dem Laptop nicht installiert).
 
 | Ordner | Inhalt |
 |---|---|
@@ -14,7 +14,7 @@ Bilder: Übersicht, Hand, Referenz, Automatik, Programme, Werkzeuge, Nullpunkte,
 
 ## Regeln
 - Die HMI fordert nur an, Verriegelungen liegen in der SPS (`GVL_HMI.stCmd`, `stSts`, Typen in `twincat/PLC/src/6_Interfaces/`).
-- CNC-Werte kommen direkt aus dem TF5310-Datenmodell.
+- CNC-Werte kommen über den SPS-Spiegel `GVL_HmiCnc` (`stCncSts`, `stCncCmd`), nicht aus einem CNC-Datenmodell.
 - STOPP ist ein Software-Stopp und ersetzt keinen Not-Halt.
 - Das eigentliche TwinCAT-HMI-Projekt (Visual Studio, Projekt P016_HMI auf dem Laptop unter `C:\Beckhoff\TwinCAT\P016`) wird in XAE erzeugt und danach hier abgelegt. Aus der Cloud ist es nicht erreichbar.
 

@@ -120,26 +120,26 @@
    "minRole": "Bediener",
    "variables": [
     {
-     "name": "Achsen X, Y, Z: Ist-Position (Maschine, Werkstück)",
+     "name": "GVL_HmiCnc.stCncSts.aAxis[1..3].rActPosMach / rActPosWork",
      "type": "LREAL",
      "direction": "S->H",
-     "source": "CNC",
-     "note": "mm; Y = Gantry-Paar, ein logischer Kanal",
+     "source": "CncSts",
+     "note": "mm, 1=X 2=Y 3=Z; Y = Gantry-Paar",
      "status": "Annahme"
     },
     {
-     "name": "Gantry: Differenz Y1 zu Y2",
+     "name": "stCncSts.rGantryDiffMm",
      "type": "LREAL",
      "direction": "S->H",
-     "source": "CNC",
-     "note": "mm",
+     "source": "CncSts",
+     "note": "mm, Y1 gegen Y2",
      "status": "Annahme"
     },
     {
-     "name": "Achsen: referenziert je Achse",
+     "name": "stCncSts.aAxis[1..3].bHomed",
      "type": "BOOL",
      "direction": "S->H",
-     "source": "CNC",
+     "source": "CncSts",
      "note": "zusätzlich stSts.bAllHomed",
      "status": "Annahme"
     },
@@ -160,18 +160,18 @@
      "status": "vorhanden"
     },
     {
-     "name": "Overrides Vorschub, Eilgang, Spindel",
+     "name": "stCncSts.nOvrFeed / nOvrRapid / nOvrSpindle",
      "type": "UINT",
      "direction": "S->H",
-     "source": "CNC",
+     "source": "CncSts",
      "note": "%",
      "status": "Annahme"
     },
     {
-     "name": "Programmname, aktueller Satz, Vorschub-Ist",
+     "name": "stCncSts.sProgramName / nActBlock / nTotalBlocks / rFeedAct",
      "type": "STRING / UDINT / LREAL",
      "direction": "S->H",
-     "source": "CNC",
+     "source": "CncSts",
      "note": "",
      "status": "Annahme"
     },
@@ -179,16 +179,16 @@
      "name": "Stückzähler Ist/Soll",
      "type": "UDINT",
      "direction": "S->H",
-     "source": "CNC",
-     "note": "G-Code-Zähler oder SPS, offen",
+     "source": "CncSts",
+     "note": "nicht in der Grundversion, offen",
      "status": "offen"
     },
     {
-     "name": "aktives Werkzeug, aktiver Nullpunkt",
+     "name": "stCncSts.nActTool / nActWcs",
      "type": "UINT",
      "direction": "S->H",
-     "source": "CNC",
-     "note": "T-Nr., G54..G59",
+     "source": "CncSts",
+     "note": "T-Nr., 54..59",
      "status": "Annahme"
     }
    ]
@@ -232,11 +232,11 @@
      "status": "vorhanden"
     },
     {
-     "name": "Tipp-Override",
+     "name": "stCncCmd.nOvrFeed",
      "type": "UINT",
      "direction": "H->S",
-     "source": "CNC",
-     "note": "%, über CNC-Override",
+     "source": "CncCmd",
+     "note": "0..120 %, Tipp-Override zusätzlich offen",
      "status": "Annahme"
     },
     {
@@ -272,11 +272,11 @@
      "status": "vorhanden"
     },
     {
-     "name": "Nullpunkt setzen (aktuelle Position)",
-     "type": "Aktion",
+     "name": "stCncCmd.bWcsSetCurrent",
+     "type": "BOOL",
      "direction": "H->S",
-     "source": "CNC",
-     "note": "CNC-Nullpunktverschiebung direkt",
+     "source": "CncCmd",
+     "note": "Position als Nullpunkt; nur Stillstand, sonst bTableWriteRejected",
      "status": "Annahme"
     }
    ]
@@ -407,19 +407,19 @@
      "status": "vorhanden"
     },
     {
-     "name": "Overrides Vorschub, Eilgang, Spindel",
+     "name": "stCncCmd.nOvrFeed / nOvrRapid / nOvrSpindle",
      "type": "UINT",
      "direction": "H->S",
-     "source": "CNC",
-     "note": "%, direkt am CNC-Kanal",
+     "source": "CncCmd",
+     "note": "0..120 / 0..100 / 50..120 %, SPS begrenzt",
      "status": "Annahme"
     },
     {
-     "name": "Satznummer, Satztext (Fenster), Restweg",
-     "type": "UDINT / STRING / LREAL",
+     "name": "stCncSts.nActBlock / sBlockText[0..6] / rRestMm",
+     "type": "UDINT / STRING(80) / LREAL",
      "direction": "S->H",
-     "source": "CNC",
-     "note": "Programmanzeige aus TF5310 G-Code-Editor",
+     "source": "CncSts",
+     "note": "Index 3 = aktueller Satz",
      "status": "Annahme"
     },
     {
@@ -434,8 +434,8 @@
      "name": "Laufzeit, Restzeit",
      "type": "TIME",
      "direction": "S->H",
-     "source": "CNC",
-     "note": "Restzeit nur wenn die CNC sie liefert",
+     "source": "CncSts",
+     "note": "nicht in der Grundversion, offen",
      "status": "offen"
     },
     {
@@ -468,19 +468,19 @@
      "status": "offen"
     },
     {
-     "name": "Programm wählen und laden",
-     "type": "STRING / Aktion",
+     "name": "stCncCmd.sProgramSelect / bProgramLoad",
+     "type": "STRING(255) / BOOL",
      "direction": "H->S",
-     "source": "CNC",
-     "note": "Programmverwaltung der TF5310, keine SPS-Variable nötig",
+     "source": "CncCmd",
+     "note": "nur im Stillstand (Idle oder Hand)",
      "status": "Annahme"
     },
     {
-     "name": "Ladestatus, Syntaxfehler (Klartext)",
-     "type": "ENUM / STRING",
+     "name": "stCncSts.bProgramLoaded / sProgramName",
+     "type": "BOOL / STRING",
      "direction": "S->H",
-     "source": "CNC",
-     "note": "",
+     "source": "CncSts",
+     "note": "Syntaxfehler im Klartext offen",
      "status": "Annahme"
     },
     {
@@ -513,11 +513,11 @@
    "minRole": "Einrichter",
    "variables": [
     {
-     "name": "Werkzeugtabelle [1..N]",
-     "type": "CNC-Werkzeugdaten",
+     "name": "stCncSts.aTool[1..32] / stCncCmd.aTool[1..32] + bTableWrite",
+     "type": "nNo, sName, rLength, rRadius",
      "direction": "S->H / H->S",
-     "source": "CNC",
-     "note": "Nummer, Name, Länge, Radius, Verschleiß",
+     "source": "CncSts",
+     "note": "Schreibpuffer mit Impuls; nur Stillstand, Rückmeldung bTableWriteOk / bTableWriteRejected",
      "status": "Annahme"
     },
     {
@@ -565,34 +565,34 @@
    "minRole": "Einrichter",
    "variables": [
     {
-     "name": "Nullpunkttabelle G54..G59 [X, Y, Z]",
-     "type": "LREAL",
+     "name": "stCncSts.aWcs[54..59] / stCncCmd.aWcs[54..59] + bTableWrite",
+     "type": "rX, rY, rZ",
      "direction": "S->H / H->S",
-     "source": "CNC",
+     "source": "CncSts",
      "note": "mm",
      "status": "Annahme"
     },
     {
-     "name": "aktiver Nullpunkt",
+     "name": "stCncSts.nActWcs",
      "type": "UINT",
      "direction": "S->H",
-     "source": "CNC",
+     "source": "CncSts",
      "note": "54..59",
      "status": "Annahme"
     },
     {
-     "name": "Position als Nullpunkt setzen (je Achse)",
-     "type": "Aktion",
+     "name": "stCncCmd.bWcsSetCurrent",
+     "type": "BOOL",
      "direction": "H->S",
-     "source": "CNC",
-     "note": "im Stillstand",
+     "source": "CncCmd",
+     "note": "nur Stillstand",
      "status": "Annahme"
     },
     {
-     "name": "Ist-Position X, Y, Z",
+     "name": "stCncSts.aAxis[1..3].rActPosMach",
      "type": "LREAL",
      "direction": "S->H",
-     "source": "CNC",
+     "source": "CncSts",
      "note": "mm Maschinenkoordinaten",
      "status": "Annahme"
     }
@@ -655,12 +655,12 @@
    "minRole": "Einrichter / Service",
    "variables": [
     {
-     "name": "Achsen: Schleppabstand, Ist-Geschwindigkeit",
+     "name": "stSts.aDrive[1..4].rFollowErr",
      "type": "LREAL",
      "direction": "S->H",
-     "source": "CNC",
-     "note": "mm, mm/min",
-     "status": "Annahme"
+     "source": "Sts",
+     "note": "mm; Ist-Geschwindigkeit nicht vorgesehen",
+     "status": "vorhanden"
     },
     {
      "name": "stSts.aDrive[1..4]",
@@ -746,9 +746,9 @@
      "name": "Software-Endschalter je Achse",
      "type": "LREAL",
      "direction": "S->H / H->S",
-     "source": "CNC",
-     "note": "mm, min und max",
-     "status": "Annahme"
+     "source": "Param",
+     "note": "mm, min und max; Feld in ST_MachineParams prüfen",
+     "status": "offen"
     },
     {
      "name": "stSts.dwOperatingSec / dwSpindleSec",
