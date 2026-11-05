@@ -1,0 +1,107 @@
+[
+ {
+  "id": 100,
+  "slot": "SafetyOpen",
+  "class": "R4",
+  "text": "Sicherheitskreis offen oder NOT-HALT",
+  "remedy": "Ursache beseitigen, NOT-HALT entriegeln, Türen schließen, quittieren, Achsen neu referenzieren"
+ },
+ {
+  "id": 101,
+  "slot": "DoorOpen",
+  "class": "R3",
+  "text": "Schutztür offen",
+  "remedy": "Tür schließen, quittieren"
+ },
+ {
+  "id": 110,
+  "slot": "AirPressureLow",
+  "class": "R3",
+  "text": "Druckluft zu niedrig (unter 7,5 bar)",
+  "remedy": "Druckluftversorgung prüfen, quittieren"
+ },
+ {
+  "id": 120,
+  "slot": "ExtractionFault",
+  "class": "R2",
+  "text": "Absaugung ausgefallen",
+  "remedy": "Absaugung prüfen, Programm mit Start fortsetzen"
+ },
+ {
+  "id": 200,
+  "slot": "SpindleFuFault",
+  "class": "R4",
+  "text": "Spindelumrichter meldet Störung",
+  "remedy": "Anzeige am Umrichter ablesen, Ursache beheben, quittieren"
+ },
+ {
+  "id": 201,
+  "slot": "SpindlePtcTrip",
+  "class": "R3",
+  "text": "Spindel zu heiß (Kaltleiter)",
+  "remedy": "Spindel abkühlen lassen, Kühlung prüfen, quittieren"
+ },
+ {
+  "id": 202,
+  "slot": "SpindleNoFeedback",
+  "class": "R3",
+  "text": "Spindeldrehzahl nicht erreicht",
+  "remedy": "Spindel und Umrichter prüfen, quittieren"
+ },
+ {
+  "id": 203,
+  "slot": "SpindleLockedSetup",
+  "class": "R1",
+  "text": "Spindelstart im Einrichten gesperrt",
+  "remedy": "In Hand oder Automatik wechseln"
+ },
+ {
+  "id": 300,
+  "slot": "AxisDriveFault",
+  "class": "R4",
+  "text": "Antriebsfehler Achse",
+  "remedy": "Fehlercode im Bild Diagnose lesen, beheben, quittieren, referenzieren"
+ },
+ {
+  "id": 301,
+  "slot": "AxisFollowingErr",
+  "class": "R4",
+  "text": "Schleppfehler zu groß",
+  "remedy": "Achse auf Hindernis oder Klemmen prüfen, quittieren, referenzieren"
+ },
+ {
+  "id": 302,
+  "slot": "HwLimitHit",
+  "class": "R4",
+  "text": "Hardware-Endschalter angefahren",
+  "remedy": "Achse im Hand freifahren, quittieren, referenzieren"
+ },
+ {
+  "id": 310,
+  "slot": "FieldbusLost",
+  "class": "R4",
+  "text": "Feldbus ausgefallen",
+  "remedy": "Kabel und Teilnehmer prüfen, Steuerung neu starten"
+ },
+ {
+  "id": 320,
+  "slot": "HomingLost",
+  "class": "R4",
+  "text": "Referenz verloren",
+  "remedy": "Alle Achsen referenzieren"
+ },
+ {
+  "id": 330,
+  "slot": "HmiLinkLost",
+  "class": "R2",
+  "text": "Verbindung zur Bedienoberfläche gestört",
+  "remedy": "Bedienoberfläche neu starten"
+ },
+ {
+  "id": 900,
+  "slot": "ParamMismatch",
+  "class": "R4",
+  "text": "Maschinen-ID oder Version passt nicht",
+  "remedy": "Service rufen, Parameter laden"
+ }
+]

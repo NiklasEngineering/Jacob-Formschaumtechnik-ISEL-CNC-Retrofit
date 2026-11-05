@@ -1,0 +1,16 @@
+/* P-016 HMI, NIKLAS-Petrol (Website-Wert, von Simon bestätigt). Gilt für das Touchpanel. */
+:root {
+  --pet: #255975;
+  --pet-light: #57bdc7;
+  --panel: #eef1f3;
+  --card: #ffffff;
+  --text: #1b2329;
+  --muted: #566570;
+  --line: #c2ccd3;
+  --ok: #2e7d4f;
+  --warn: #b7791f;
+  --fault: #c0392b;
+  --stop: #c0392b;
+  --font: Helvetica, Arial, "Liberation Sans", sans-serif;
+  --touch-min: 44px; /* Mindestgröße Schaltfläche */
+}

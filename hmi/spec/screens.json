@@ -1,0 +1,788 @@
+{
+ "machine": "M1",
+ "note": "Entwurf 05.11.2026, Annahmen und Wünsche siehe Status",
+ "common": [
+  {
+   "name": "stSts.nMachineId",
+   "type": "UINT",
+   "direction": "S->H",
+   "source": "Sts",
+   "note": "z. B. 1 für M1",
+   "status": "vorhanden"
+  },
+  {
+   "name": "stSts.eMode",
+   "type": "E_OpMode",
+   "direction": "S->H",
+   "source": "Sts",
+   "note": "Hand, Auto, Setup",
+   "status": "vorhanden"
+  },
+  {
+   "name": "stSts.eState",
+   "type": "E_MachState",
+   "direction": "S->H",
+   "source": "Sts",
+   "note": "Stopped, Idle, Execute, Held, Aborted, EStop, Fault",
+   "status": "vorhanden"
+  },
+  {
+   "name": "stSts.bSafetyOk",
+   "type": "BOOL",
+   "direction": "S->H",
+   "source": "Sts",
+   "note": "Status Sicherheitskreis (Pilz)",
+   "status": "vorhanden"
+  },
+  {
+   "name": "stSts.bDrivesEnabled",
+   "type": "BOOL",
+   "direction": "S->H",
+   "source": "Sts",
+   "note": "Reglerfreigabe",
+   "status": "vorhanden"
+  },
+  {
+   "name": "stSts.bAllHomed",
+   "type": "BOOL",
+   "direction": "S->H",
+   "source": "Sts",
+   "note": "alle Achsen referenziert",
+   "status": "vorhanden"
+  },
+  {
+   "name": "stSts.bHmiLinkOk",
+   "type": "BOOL",
+   "direction": "S->H",
+   "source": "Sts",
+   "note": "Lebenszeichen der HMI ok",
+   "status": "vorhanden"
+  },
+  {
+   "name": "stCmd.eModeRequest",
+   "type": "E_OpMode",
+   "direction": "H->S",
+   "source": "Cmd",
+   "note": "Umschaltung, SPS verriegelt",
+   "status": "vorhanden"
+  },
+  {
+   "name": "stCmd.nHeartbeat",
+   "type": "UINT",
+   "direction": "H->S",
+   "source": "Cmd",
+   "note": "HMI zählt hoch",
+   "status": "vorhanden"
+  },
+  {
+   "name": "Benutzer / Rolle",
+   "type": "TwinCAT-HMI-Benutzerverwaltung",
+   "direction": "-",
+   "source": "HMI",
+   "note": "Bediener, Einrichter, Service",
+   "status": "Annahme"
+  },
+  {
+   "name": "stSts.nTopAlarmId / eTopAlarmClass",
+   "type": "INT / E_FaultClass",
+   "direction": "S->H",
+   "source": "Sts",
+   "note": "höchste aktive Meldung",
+   "status": "vorhanden"
+  },
+  {
+   "name": "stSts.nActiveAlarms",
+   "type": "UINT",
+   "direction": "S->H",
+   "source": "Sts",
+   "note": "Anzahl aktiv",
+   "status": "vorhanden"
+  },
+  {
+   "name": "stCmd.bAck",
+   "type": "BOOL",
+   "direction": "H->S",
+   "source": "Cmd",
+   "note": "Impuls",
+   "status": "vorhanden"
+  }
+ ],
+ "screens": [
+  {
+   "id": "uebersicht",
+   "name": "Übersicht",
+   "description": "Alle Betriebsdaten auf einen Blick. Startseite nach dem Anmelden und Rückfallseite bei Störung.",
+   "requirements": [
+    "2.1.4",
+    "2.9.3",
+    "2.4.3"
+   ],
+   "minRole": "Bediener",
+   "variables": [
+    {
+     "name": "Achsen X, Y, Z: Ist-Position (Maschine, Werkstück)",
+     "type": "LREAL",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "mm; Y = Gantry-Paar, ein logischer Kanal",
+     "status": "Annahme"
+    },
+    {
+     "name": "Gantry: Differenz Y1 zu Y2",
+     "type": "LREAL",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "mm",
+     "status": "Annahme"
+    },
+    {
+     "name": "Achsen: referenziert je Achse",
+     "type": "BOOL",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "zusätzlich stSts.bAllHomed",
+     "status": "Annahme"
+    },
+    {
+     "name": "stSts.bSpindleRunning / rSpindleActRpm",
+     "type": "BOOL / REAL",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "1/min, max. 16.600",
+     "status": "vorhanden"
+    },
+    {
+     "name": "stSts.bExtractionOn / bBlowAirOn / bVacuumOn",
+     "type": "BOOL",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "",
+     "status": "vorhanden"
+    },
+    {
+     "name": "Overrides Vorschub, Eilgang, Spindel",
+     "type": "UINT",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "%",
+     "status": "Annahme"
+    },
+    {
+     "name": "Programmname, aktueller Satz, Vorschub-Ist",
+     "type": "STRING / UDINT / LREAL",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "",
+     "status": "Annahme"
+    },
+    {
+     "name": "Stückzähler Ist/Soll",
+     "type": "UDINT",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "G-Code-Zähler oder SPS, offen",
+     "status": "offen"
+    },
+    {
+     "name": "aktives Werkzeug, aktiver Nullpunkt",
+     "type": "UINT",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "T-Nr., G54..G59",
+     "status": "Annahme"
+    }
+   ]
+  },
+  {
+   "id": "hand",
+   "name": "Hand",
+   "description": "Achsen verfahren per Touch oder Handrad, Schrittweiten, Eilgang, Spindel und Hilfsfunktionen.",
+   "requirements": [
+    "2.3.1",
+    "2.3.2",
+    "2.3.3",
+    "2.7.1",
+    "2.7.4",
+    "2.7.5"
+   ],
+   "minRole": "Einrichter",
+   "variables": [
+    {
+     "name": "stCmd.bJogPlus / bJogMinus / nJogAxis",
+     "type": "BOOL / USINT",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "gehalten, 1=X 2=Y 3=Z",
+     "status": "vorhanden"
+    },
+    {
+     "name": "stCmd.bJogRapid",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "Eilgang beim Tippen",
+     "status": "vorhanden"
+    },
+    {
+     "name": "Schrittweite (kontinuierlich, 0,01 / 0,1 / 1 / 10 mm)",
+     "type": "REAL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "stCmd.rJogStepMm, 0 = kontinuierlich",
+     "status": "fehlt"
+    },
+    {
+     "name": "Tipp-Override",
+     "type": "UINT",
+     "direction": "H->S",
+     "source": "CNC",
+     "note": "%, über CNC-Override",
+     "status": "Annahme"
+    },
+    {
+     "name": "Handrad: Freigabe, Achse, Untersetzung (x1/x10/x100)",
+     "type": "BOOL / USINT / USINT",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "bHandwheelEnable, nHandwheelAxis, nHandwheelRatio; nur M1 mit Bestandsgerät",
+     "status": "fehlt"
+    },
+    {
+     "name": "stSts.bHandwheelActive",
+     "type": "BOOL",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "",
+     "status": "fehlt"
+    },
+    {
+     "name": "stCmd.bSpindleOn / bSpindleCcw / rSpindleSetRpm",
+     "type": "BOOL / BOOL / REAL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "nur Hand, 1/min",
+     "status": "vorhanden"
+    },
+    {
+     "name": "stCmd.bExtraction / bBlowAir / bVacuum",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "",
+     "status": "vorhanden"
+    },
+    {
+     "name": "Nullpunkt setzen (aktuelle Position)",
+     "type": "Aktion",
+     "direction": "H->S",
+     "source": "CNC",
+     "note": "CNC-Nullpunktverschiebung direkt",
+     "status": "Annahme"
+    }
+   ]
+  },
+  {
+   "id": "referenz",
+   "name": "Referenz",
+   "description": "Referenzfahrt aller Achsen oder einzeln, mit Anzeige der Sequenz.",
+   "requirements": [
+    "2.2.1",
+    "2.2.3",
+    "2.2.6"
+   ],
+   "minRole": "Einrichter",
+   "variables": [
+    {
+     "name": "stCmd.bHomeRequest",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "Impuls, alle Achsen",
+     "status": "vorhanden"
+    },
+    {
+     "name": "Einzelachse referenzieren (X, Y, Z)",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "stCmd.bHomeAxis[1..3]",
+     "status": "fehlt"
+    },
+    {
+     "name": "Referenzfahrt abbrechen",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "stCmd.bHomeAbort, sonst über bHold/bAbort",
+     "status": "fehlt"
+    },
+    {
+     "name": "stSts.bAllHomed",
+     "type": "BOOL",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "",
+     "status": "vorhanden"
+    },
+    {
+     "name": "Referenzstatus je Achse (offen, läuft, fertig, Fehler)",
+     "type": "E_HomeState[1..3]",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "stSts.eHomeState[]; Gantry: beide Seiten, dann Ausrichten",
+     "status": "fehlt"
+    },
+    {
+     "name": "Referenzschritt der Sequenz",
+     "type": "USINT",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "stSts.nHomeStep für die Anzeige",
+     "status": "fehlt"
+    },
+    {
+     "name": "Endschalter, Referenzschalter je Achse",
+     "type": "BOOL",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "Lage und Anzahl laut Schaltplan, fehlt",
+     "status": "offen"
+    },
+    {
+     "name": "Alarm 320 HomingLost",
+     "type": "E_AlarmId",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "Referenz verloren, Klasse R4",
+     "status": "vorhanden"
+    }
+   ]
+  },
+  {
+   "id": "auto",
+   "name": "Automatik",
+   "description": "Programmlauf mit Satzanzeige, Overrides, Einzelsatz, Trockenlauf.",
+   "requirements": [
+    "2.4.1",
+    "2.4.2",
+    "2.4.3",
+    "2.4.4",
+    "2.4.5",
+    "2.4.6",
+    "2.4.7",
+    "2.4.8"
+   ],
+   "minRole": "Bediener",
+   "variables": [
+    {
+     "name": "stCmd.bStart",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "Impuls, startet und setzt fort",
+     "status": "vorhanden"
+    },
+    {
+     "name": "stCmd.bHold",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "Impuls, Vorschubhalt",
+     "status": "vorhanden"
+    },
+    {
+     "name": "stCmd.bAbort",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "Impuls, Programmabbruch",
+     "status": "vorhanden"
+    },
+    {
+     "name": "Einzelsatz, Trockenlauf, optionaler Halt M01",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "stCmd.bSingleBlock, bDryRun, bOptStop",
+     "status": "fehlt"
+    },
+    {
+     "name": "Overrides Vorschub, Eilgang, Spindel",
+     "type": "UINT",
+     "direction": "H->S",
+     "source": "CNC",
+     "note": "%, direkt am CNC-Kanal",
+     "status": "Annahme"
+    },
+    {
+     "name": "Satznummer, Satztext (Fenster), Restweg",
+     "type": "UDINT / STRING / LREAL",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "Programmanzeige aus TF5310 G-Code-Editor",
+     "status": "Annahme"
+    },
+    {
+     "name": "stSts.eState",
+     "type": "E_MachState",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "Execute, Held, Aborted",
+     "status": "vorhanden"
+    },
+    {
+     "name": "Laufzeit, Restzeit",
+     "type": "TIME",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "Restzeit nur wenn die CNC sie liefert",
+     "status": "offen"
+    },
+    {
+     "name": "stSts.bToolChangeReq / nToolChangeNo",
+     "type": "BOOL / UINT",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "Aufforderung bei M6",
+     "status": "vorhanden"
+    }
+   ]
+  },
+  {
+   "id": "prog",
+   "name": "Programme",
+   "description": "Programm aus dem Freigabeordner wählen und laden, Schnellauswahl.",
+   "requirements": [
+    "2.8.4",
+    "2.8.5",
+    "2.1.6"
+   ],
+   "minRole": "Bediener",
+   "variables": [
+    {
+     "name": "Dateiliste Programmordner",
+     "type": "Verzeichnisliste",
+     "direction": "S->H",
+     "source": "HMI",
+     "note": "Name, Größe, Datum; Pfad und Namenskonvention offen",
+     "status": "offen"
+    },
+    {
+     "name": "Programm wählen und laden",
+     "type": "STRING / Aktion",
+     "direction": "H->S",
+     "source": "CNC",
+     "note": "Programmverwaltung der TF5310, keine SPS-Variable nötig",
+     "status": "Annahme"
+    },
+    {
+     "name": "Ladestatus, Syntaxfehler (Klartext)",
+     "type": "ENUM / STRING",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "",
+     "status": "Annahme"
+    },
+    {
+     "name": "Programm löschen",
+     "type": "Aktion",
+     "direction": "H->S",
+     "source": "HMI",
+     "note": "nur Einrichter und Service",
+     "status": "Annahme"
+    },
+    {
+     "name": "Schnellauswahl 1..8",
+     "type": "ARRAY OF STRING",
+     "direction": "-",
+     "source": "HMI",
+     "note": "Serienfertigung, optional",
+     "status": "Annahme"
+    }
+   ]
+  },
+  {
+   "id": "werkzeug",
+   "name": "Werkzeuge",
+   "description": "Werkzeugtabelle mit Nummer, Länge, Radius; manueller Werkzeugwechsel.",
+   "requirements": [
+    "2.6.1",
+    "2.6.2",
+    "2.5.8"
+   ],
+   "minRole": "Einrichter",
+   "variables": [
+    {
+     "name": "Werkzeugtabelle [1..N]",
+     "type": "CNC-Werkzeugdaten",
+     "direction": "S->H / H->S",
+     "source": "CNC",
+     "note": "Nummer, Name, Länge, Radius, Verschleiß",
+     "status": "Annahme"
+    },
+    {
+     "name": "stSts.bToolChangeReq / nToolChangeNo",
+     "type": "BOOL / UINT",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "M6 manuell: Programm hält, Aufforderung",
+     "status": "vorhanden"
+    },
+    {
+     "name": "stCmd.bToolChangeDone",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "Impuls, Quittung",
+     "status": "vorhanden"
+    },
+    {
+     "name": "Werkzeuglänge messen",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "nur mit Taster (EL1252), Option",
+     "status": "offen"
+    },
+    {
+     "name": "Werkzeugtabelle importieren, exportieren",
+     "type": "Datei",
+     "direction": "-",
+     "source": "HMI",
+     "note": "Fusion-Bibliothek wäre Nachtrag",
+     "status": "offen"
+    }
+   ]
+  },
+  {
+   "id": "nullpunkt",
+   "name": "Nullpunkte",
+   "description": "Werkstücknullpunkte G54 bis G59 anzeigen, antasten, setzen.",
+   "requirements": [
+    "2.2.2",
+    "2.2.8"
+   ],
+   "minRole": "Einrichter",
+   "variables": [
+    {
+     "name": "Nullpunkttabelle G54..G59 [X, Y, Z]",
+     "type": "LREAL",
+     "direction": "S->H / H->S",
+     "source": "CNC",
+     "note": "mm",
+     "status": "Annahme"
+    },
+    {
+     "name": "aktiver Nullpunkt",
+     "type": "UINT",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "54..59",
+     "status": "Annahme"
+    },
+    {
+     "name": "Position als Nullpunkt setzen (je Achse)",
+     "type": "Aktion",
+     "direction": "H->S",
+     "source": "CNC",
+     "note": "im Stillstand",
+     "status": "Annahme"
+    },
+    {
+     "name": "Ist-Position X, Y, Z",
+     "type": "LREAL",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "mm Maschinenkoordinaten",
+     "status": "Annahme"
+    }
+   ]
+  },
+  {
+   "id": "meldungen",
+   "name": "Meldungen",
+   "description": "Aktive Alarme mit Abhilfe, Historie, Quittieren.",
+   "requirements": [
+    "2.9.1",
+    "2.9.2",
+    "2.10.2"
+   ],
+   "minRole": "Bediener",
+   "variables": [
+    {
+     "name": "Liste aktive Meldungen (ID, Klasse, aktiv, quittiert, Zeit)",
+     "type": "ARRAY OF ST_Alarm",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "stSts.aAlarms[0..14] oder EventLogger; heute nur die höchste Meldung",
+     "status": "fehlt"
+    },
+    {
+     "name": "Meldehistorie (Journal)",
+     "type": "EventLogger-Abfrage",
+     "direction": "S->H",
+     "source": "HMI",
+     "note": "Filter nach Klasse und Datum",
+     "status": "Annahme"
+    },
+    {
+     "name": "stCmd.bAck",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "R3 und R4 bleiben bis zur Quittierung",
+     "status": "vorhanden"
+    },
+    {
+     "name": "Meldetexte und Abhilfe",
+     "type": "Textkatalog de",
+     "direction": "-",
+     "source": "HMI",
+     "note": "Tabelle unten, ID wie E_AlarmId",
+     "status": "Vorschlag"
+    }
+   ]
+  },
+  {
+   "id": "diagnose",
+   "name": "Diagnose",
+   "description": "Achsstatus, Schleppabstand, Ein- und Ausgänge, Spindel und Feldbus.",
+   "requirements": [
+    "2.9.3",
+    "2.9.4",
+    "2.10.4"
+   ],
+   "minRole": "Einrichter / Service",
+   "variables": [
+    {
+     "name": "Achsen: Schleppabstand, Ist-Geschwindigkeit",
+     "type": "LREAL",
+     "direction": "S->H",
+     "source": "CNC",
+     "note": "mm, mm/min",
+     "status": "Annahme"
+    },
+    {
+     "name": "Antriebe iMD 40: Zustand, Fehlercode, Freigabe je Regler (4)",
+     "type": "ST_AxisDrive[1..4]",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "stSts.aDrive[1..4]; Emergency-Code über CANopen",
+     "status": "fehlt"
+    },
+    {
+     "name": "Feldbus: EtherCAT, CANopen Zustand",
+     "type": "ENUM",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "stSts.eEtherCat, eCanopen; Alarm 310",
+     "status": "fehlt"
+    },
+    {
+     "name": "FU-Störung, Kaltleiter-Auslösung",
+     "type": "BOOL",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "über Alarme 200 und 201, Rohsignal zusätzlich gewünscht",
+     "status": "fehlt"
+    },
+    {
+     "name": "Druckluft, Absaugung",
+     "type": "BOOL",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "über Alarme 110 und 120",
+     "status": "vorhanden"
+    },
+    {
+     "name": "Digitale Ein- und Ausgänge",
+     "type": "ARRAY OF BOOL",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "stSts.aDI, aDO; Belegung fehlt (Schaltplan)",
+     "status": "offen"
+    },
+    {
+     "name": "Ausgangstest (Force)",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "nur Service, nur Stillstand, nie Sicherheitsausgang",
+     "status": "Annahme"
+    }
+   ]
+  },
+  {
+   "id": "service",
+   "name": "Service",
+   "description": "Anmeldung, Parameter, Software-Endschalter, Wartung, Sicherung, Version.",
+   "requirements": [
+    "2.1.7",
+    "2.2.4",
+    "2.9.5",
+    "2.11.3",
+    "2.11.4",
+    "2.11.5"
+   ],
+   "minRole": "Service",
+   "variables": [
+    {
+     "name": "Anmeldung, Benutzer, Passwörter",
+     "type": "Benutzerverwaltung",
+     "direction": "-",
+     "source": "HMI",
+     "note": "Bediener, Einrichter, Service",
+     "status": "Annahme"
+    },
+    {
+     "name": "Maschinenparameter",
+     "type": "ST_MachineParams",
+     "direction": "S->H / H->S",
+     "source": "Param",
+     "note": "ein Software-Stand für M1 bis M4",
+     "status": "vorhanden"
+    },
+    {
+     "name": "Software-Endschalter je Achse",
+     "type": "LREAL",
+     "direction": "S->H / H->S",
+     "source": "CNC",
+     "note": "mm, min und max",
+     "status": "Annahme"
+    },
+    {
+     "name": "stSts.dwOperatingSec / dwSpindleSec",
+     "type": "UDINT",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "Wartungsanzeige; Intervalle in ST_MachineParams",
+     "status": "vorhanden"
+    },
+    {
+     "name": "stSts.sSwVersion",
+     "type": "STRING(15)",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "SPS-Stand; HMI- und Parameterstand zusätzlich",
+     "status": "vorhanden"
+    },
+    {
+     "name": "Sicherung, Wiederherstellung",
+     "type": "Dateiaktion",
+     "direction": "-",
+     "source": "HMI",
+     "note": "Programme, Werkzeuge, Parameter",
+     "status": "Annahme"
+    },
+    {
+     "name": "Fernzugriff Freigabe",
+     "type": "BOOL",
+     "direction": "H->S",
+     "source": "Cmd",
+     "note": "Umsetzung offen",
+     "status": "offen"
+    }
+   ]
+  }
+ ]
+}
