@@ -1,0 +1,17 @@
+# TwinCAT Build-Ausgaben und lokale Dateien
+_Boot/
+_CompileInfo/
+_Libraries/
+*.bootdata
+*.tmc
+*.tpy
+*.~u
+*.compileinfo
+*.suo
+*.user
+# Zugangsdaten, Lizenzen, Schluessel gehoeren nie ins Repo
+*.tclrs
+*.key
+*.pem
+*.ovpn
+secrets/

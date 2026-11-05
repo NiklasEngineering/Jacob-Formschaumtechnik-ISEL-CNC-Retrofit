@@ -1,0 +1,27 @@
+{
+  "_hinweis": "P-016 Maschinenparameter M1 (imes-icore GPY 138/158-SW, SN 527279). Werte mit 'annahme' sind NICHT bestaetigt und muessen vor Inbetriebnahme gegen Schaltplan/Handbuch geprueft werden.",
+  "nMachineId": 1,
+  "sSwVersionExpected": "0.1.0",
+  "nNumAxes": 4,
+  "achsen": [
+    {"name": "Y1", "beschreibung": "Portal links (Gantry-Master)", "status": "annahme"},
+    {"name": "Y2", "beschreibung": "Portal rechts (Gantry-Slave)", "status": "annahme"},
+    {"name": "X",  "beschreibung": "Querachse oben", "status": "annahme"},
+    {"name": "Z",  "beschreibung": "Spindel hoch/runter, Bremse offen", "status": "annahme"}
+  ],
+  "spindel": {
+    "typ": "isel VKH63/26-90T, 2,2 kW, S6-40 %",
+    "rSpindleMaxRpm": 16600.0,
+    "rSpindleMinRpm": 0.0,
+    "rSpindleVoltMax": 10.0,
+    "tSpindleRunUp": "T#8S",
+    "tSpindleStandstill": "T#10S",
+    "status": "Max-Drehzahl vom Typenschild belegt, Zeiten und Ansteuerung annahme"
+  },
+  "tHmiTimeout": "T#500MS",
+  "tFeedbackTimeout": "T#3S",
+  "bAirMonitoring": true,
+  "bHasToolChanger": false,
+  "antriebsvariante": "CanopenDs402",
+  "offen": ["Achszuordnung zu den Reglern", "Endschalter und Referenzschalter", "Z-Bremse", "Stoppkategorie Pilz-Relais", "Werkzeugwechsler 'SW'"]
+}
