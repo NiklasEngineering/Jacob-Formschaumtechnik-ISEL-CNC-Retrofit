@@ -18,6 +18,7 @@ VAR
     fbHoming   : FB_Homing;
     fbJog      : FB_Jog;
     aCond      : ARRAY[0..14] OF BOOL;
+    aHomeReq   : ARRAY[1..3] OF BOOL;
     aAlarmId   : ARRAY[0..14] OF INT := [100, 101, 110, 120, 200, 201, 202, 203, 300, 301, 302, 310, 320, 330, 900];
     i          : INT;
     bStandstill: BOOL;
@@ -109,7 +110,11 @@ GVL_IO.bBlowAirOut    := fbInterlocks.bAuxOk AND (fbMFunc.bBlowAir OR GVL_HMI.st
 GVL_IO.bVacuumOut     := fbInterlocks.bAuxOk AND (fbMFunc.bVacuum OR GVL_HMI.stCmd.bVacuum);
 
 (* 8. Referenzieren und Tippen *)
-fbHoming(bStart := GVL_HMI.stCmd.bHomeRequest, aStartAxis := GVL_HMI.stCmd.bHomeAxis,
+(* Zuordnung HMI-Achse (1=X, 2=Y, 3=Z) zu Referenzgruppe (1=Z, 2=X, 3=Y) *)
+aHomeReq[1] := GVL_HMI.stCmd.bHomeAxis[3];
+aHomeReq[2] := GVL_HMI.stCmd.bHomeAxis[1];
+aHomeReq[3] := GVL_HMI.stCmd.bHomeAxis[2];
+fbHoming(bStart := GVL_HMI.stCmd.bHomeRequest, aStartAxis := aHomeReq,
          bAbort := GVL_HMI.stCmd.bAbort OR GVL_HMI.stCmd.bHomeAbort,
          bHomingOk := fbInterlocks.bHomingOk, aHomed := GVL_Machine.aCncHomed);
 fbJog(bJogOk := fbInterlocks.bJogOk, bPlus := GVL_HMI.stCmd.bJogPlus, bMinus := GVL_HMI.stCmd.bJogMinus,
@@ -159,7 +164,9 @@ GVL_HMI.stSts.nMachineId     := GVL_Machine.stParams.nMachineId;
 GVL_HMI.stSts.sSwVersion     := '0.1.0';
 GVL_HMI.stSts.dwOperatingSec := dwSecTick;
 GVL_HMI.stSts.bHandwheelActive := GVL_Machine.bCncHandwheel;
-GVL_HMI.stSts.eHomeState     := fbHoming.eHomeState;
+GVL_HMI.stSts.eHomeState[1]  := fbHoming.eHomeState[2];   (* X *)
+GVL_HMI.stSts.eHomeState[2]  := fbHoming.eHomeState[3];   (* Y *)
+GVL_HMI.stSts.eHomeState[3]  := fbHoming.eHomeState[1];   (* Z *)
 GVL_HMI.stSts.nHomeStep      := fbHoming.nStepOut;
 GVL_HMI.stSts.aAlarms        := fbAlarms.aList;
 GVL_HMI.stSts.aDrive         := GVL_IO.aAxis;
