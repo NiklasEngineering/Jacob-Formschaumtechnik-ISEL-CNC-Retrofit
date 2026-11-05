@@ -51,12 +51,21 @@ TYPE E_AlarmId :
 ) INT;
 END_TYPE
 
-(* Eine Meldung aus der Meldeliste *)
+(* Eine Meldung aus der Meldeliste, Index = E_AlarmSlot *)
 TYPE ST_Alarm :
 STRUCT
-    eId    : E_AlarmId;
-    eClass : E_FaultClass;
-    bActive : BOOL;
-    bAcked  : BOOL;
+    nId     : INT;
+    eClass  : E_FaultClass;
+    bActive : BOOL;          (* Ursache besteht *)
+    bLatched: BOOL;          (* R3/R4 gespeichert, wartet auf Quittierung *)
 END_STRUCT
+END_TYPE
+
+TYPE E_HomeState :
+(
+    Open := 0,
+    Running := 1,
+    Done := 2,
+    Error := 3
+) INT;
 END_TYPE

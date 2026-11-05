@@ -15,6 +15,7 @@ VAR_OUTPUT
     bAnyR3OrHigher : BOOL;
     bAnyR4         : BOOL;
     bAckPending    : BOOL;               (* gespeicherte R3/R4 warten auf Quittierung *)
+    aList          : ARRAY[0..14] OF ST_Alarm;   (* fuer die HMI *)
 END_VAR
 VAR
     aId    : ARRAY[0..14] OF INT := [100, 101, 110, 120, 200, 201, 202, 203, 300, 301, 302, 310, 320, 330, 900];
@@ -37,6 +38,10 @@ FOR i := 0 TO 14 DO
     IF rtAck.Q AND NOT aCond[i] THEN
         aLatch[i] := FALSE;
     END_IF
+    aList[i].nId := aId[i];
+    aList[i].eClass := F_ToFaultClass(nCls);
+    aList[i].bActive := aCond[i];
+    aList[i].bLatched := aLatch[i] AND NOT aCond[i];
     IF aCond[i] OR aLatch[i] THEN
         nActive := nActive + 1;
         IF nCls >= 2 THEN bAnyR2OrHigher := TRUE; END_IF

@@ -22,5 +22,13 @@ STRUCT
     sSwVersion      : STRING(15);
     dwOperatingSec  : UDINT;   (* Betriebssekunden, fuer Wartungsanzeige *)
     dwSpindleSec    : UDINT;
+    bHandwheelActive: BOOL;
+    eHomeState      : ARRAY[1..3] OF E_HomeState;
+    nHomeStep       : USINT;
+    aAlarms         : ARRAY[0..14] OF ST_Alarm;    (* Index = E_AlarmSlot *)
+    aDrive          : ARRAY[1..4] OF ST_AxisDrive; (* Diagnose, 1=Y1 2=Y2 3=X 4=Z [Annahme] *)
+    bFieldbusOk     : BOOL;
+    bFuFault        : BOOL;    (* Rohsignal *)
+    bPtcTrip        : BOOL;    (* Rohsignal *)
 END_STRUCT
 END_TYPE
