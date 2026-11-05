@@ -224,12 +224,12 @@
      "status": "vorhanden"
     },
     {
-     "name": "Schrittweite (kontinuierlich, 0,01 / 0,1 / 1 / 10 mm)",
+     "name": "stCmd.rJogStepMm",
      "type": "REAL",
      "direction": "H->S",
      "source": "Cmd",
-     "note": "stCmd.rJogStepMm, 0 = kontinuierlich",
-     "status": "fehlt"
+     "note": "0 = kontinuierlich, sonst 0,01 / 0,1 / 1 / 10 mm",
+     "status": "vorhanden"
     },
     {
      "name": "Tipp-Override",
@@ -240,12 +240,12 @@
      "status": "Annahme"
     },
     {
-     "name": "Handrad: Freigabe, Achse, Untersetzung (x1/x10/x100)",
+     "name": "stCmd.bHandwheelEnable / nHandwheelAxis / nHandwheelRatio",
      "type": "BOOL / USINT / USINT",
      "direction": "H->S",
      "source": "Cmd",
-     "note": "bHandwheelEnable, nHandwheelAxis, nHandwheelRatio; nur M1 mit Bestandsgerät",
-     "status": "fehlt"
+     "note": "Achse 1=X 2=Y 3=Z, Untersetzung 1/10/100; nur M1 mit Bestandsgerät",
+     "status": "vorhanden"
     },
     {
      "name": "stSts.bHandwheelActive",
@@ -253,7 +253,7 @@
      "direction": "S->H",
      "source": "Sts",
      "note": "",
-     "status": "fehlt"
+     "status": "vorhanden"
     },
     {
      "name": "stCmd.bSpindleOn / bSpindleCcw / rSpindleSetRpm",
@@ -301,20 +301,20 @@
      "status": "vorhanden"
     },
     {
-     "name": "Einzelachse referenzieren (X, Y, Z)",
+     "name": "stCmd.bHomeAxis[1..3]",
      "type": "BOOL",
      "direction": "H->S",
      "source": "Cmd",
-     "note": "stCmd.bHomeAxis[1..3]",
-     "status": "fehlt"
+     "note": "Impuls, 1=X 2=Y 3=Z (SPS mappt intern)",
+     "status": "vorhanden"
     },
     {
-     "name": "Referenzfahrt abbrechen",
+     "name": "stCmd.bHomeAbort",
      "type": "BOOL",
      "direction": "H->S",
      "source": "Cmd",
-     "note": "stCmd.bHomeAbort, sonst über bHold/bAbort",
-     "status": "fehlt"
+     "note": "Impuls",
+     "status": "vorhanden"
     },
     {
      "name": "stSts.bAllHomed",
@@ -325,27 +325,27 @@
      "status": "vorhanden"
     },
     {
-     "name": "Referenzstatus je Achse (offen, läuft, fertig, Fehler)",
-     "type": "E_HomeState[1..3]",
+     "name": "stSts.eHomeState[1..3]",
+     "type": "E_HomeState",
      "direction": "S->H",
      "source": "Sts",
-     "note": "stSts.eHomeState[]; Gantry: beide Seiten, dann Ausrichten",
-     "status": "fehlt"
+     "note": "Open, Running, Done, Error; Gantry: beide Seiten, dann Ausrichten",
+     "status": "vorhanden"
     },
     {
-     "name": "Referenzschritt der Sequenz",
+     "name": "stSts.nHomeStep",
      "type": "USINT",
      "direction": "S->H",
      "source": "Sts",
-     "note": "stSts.nHomeStep für die Anzeige",
-     "status": "fehlt"
+     "note": "Schritt der Sequenz für die Anzeige",
+     "status": "vorhanden"
     },
     {
-     "name": "Endschalter, Referenzschalter je Achse",
+     "name": "stSts.aDrive[1..4].bHwLimitPlus / bHwLimitMinus",
      "type": "BOOL",
      "direction": "S->H",
      "source": "Sts",
-     "note": "Lage und Anzahl laut Schaltplan, fehlt",
+     "note": "Ruhestrom: FALSE = ausgelöst; Referenzschalter laut Schaltplan offen",
      "status": "offen"
     },
     {
@@ -399,12 +399,12 @@
      "status": "vorhanden"
     },
     {
-     "name": "Einzelsatz, Trockenlauf, optionaler Halt M01",
+     "name": "stCmd.bSingleBlock / bDryRun / bOptStop",
      "type": "BOOL",
      "direction": "H->S",
      "source": "Cmd",
-     "note": "stCmd.bSingleBlock, bDryRun, bOptStop",
-     "status": "fehlt"
+     "note": "Einzelsatz, Trockenlauf (Spindel gesperrt), optionaler Halt M01",
+     "status": "vorhanden"
     },
     {
      "name": "Overrides Vorschub, Eilgang, Spindel",
@@ -610,12 +610,12 @@
    "minRole": "Bediener",
    "variables": [
     {
-     "name": "Liste aktive Meldungen (ID, Klasse, aktiv, quittiert, Zeit)",
-     "type": "ARRAY OF ST_Alarm",
+     "name": "stSts.aAlarms[0..14]",
+     "type": "ST_Alarm",
      "direction": "S->H",
      "source": "Sts",
-     "note": "stSts.aAlarms[0..14] oder EventLogger; heute nur die höchste Meldung",
-     "status": "fehlt"
+     "note": "nId, eClass, bActive, bLatched; Index = Meldeslot; Zeit je Meldung kommt mit dem EventLogger-Adapter",
+     "status": "vorhanden"
     },
     {
      "name": "Meldehistorie (Journal)",
@@ -663,28 +663,28 @@
      "status": "Annahme"
     },
     {
-     "name": "Antriebe iMD 40: Zustand, Fehlercode, Freigabe je Regler (4)",
-     "type": "ST_AxisDrive[1..4]",
+     "name": "stSts.aDrive[1..4]",
+     "type": "ST_AxisDrive",
      "direction": "S->H",
      "source": "Sts",
-     "note": "stSts.aDrive[1..4]; Emergency-Code über CANopen",
-     "status": "fehlt"
+     "note": "bReady, bEnabled, bFault, nFaultCode, rFollowErr; 1=Y1 2=Y2 3=X 4=Z [Annahme]",
+     "status": "vorhanden"
     },
     {
-     "name": "Feldbus: EtherCAT, CANopen Zustand",
-     "type": "ENUM",
-     "direction": "S->H",
-     "source": "Sts",
-     "note": "stSts.eEtherCat, eCanopen; Alarm 310",
-     "status": "fehlt"
-    },
-    {
-     "name": "FU-Störung, Kaltleiter-Auslösung",
+     "name": "stSts.bFieldbusOk",
      "type": "BOOL",
      "direction": "S->H",
      "source": "Sts",
-     "note": "über Alarme 200 und 201, Rohsignal zusätzlich gewünscht",
-     "status": "fehlt"
+     "note": "Sammelstatus, Alarm 310; getrennte Zustände EtherCAT/CANopen nicht vorgesehen",
+     "status": "vorhanden"
+    },
+    {
+     "name": "stSts.bFuFault / bPtcTrip",
+     "type": "BOOL",
+     "direction": "S->H",
+     "source": "Sts",
+     "note": "Rohsignale, zusätzlich Alarme 200 und 201",
+     "status": "vorhanden"
     },
     {
      "name": "Druckluft, Absaugung",
@@ -699,7 +699,7 @@
      "type": "ARRAY OF BOOL",
      "direction": "S->H",
      "source": "Sts",
-     "note": "stSts.aDI, aDO; Belegung fehlt (Schaltplan)",
+     "note": "nicht in der Grundversion (SPS-Thread); Belegung fehlt (Schaltplan). Bild zeigt vorerst nur Statussignale",
      "status": "offen"
     },
     {

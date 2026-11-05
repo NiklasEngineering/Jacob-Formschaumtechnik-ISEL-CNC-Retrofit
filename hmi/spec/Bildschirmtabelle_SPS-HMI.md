@@ -12,7 +12,7 @@ Status: Vorschlag, nicht mit Kunde oder Beckhoff bestätigt. **Vor dem Ändern n
 - CNC-Werte (Positionen, Overrides, Satz, Werkzeug- und Nullpunkttabelle, Programmverwaltung) liest und schreibt die HMI über das CNC-Datenmodell der TF5310 (Rückfall TF2000: über SPS-Variablen).
 - Sicherheitsfunktionen bleiben hart verdrahtet. Die HMI zeigt nur Status. STOPP am Bildschirm ist ein Software-Stopp und ersetzt keinen Not-Halt.
 
-Quelle: Cmd = `stCmd`, Sts = `stSts`, CNC = TF5310-Datenmodell, Param = `ST_MachineParams`, HMI = nur im HMI-Server. Status: **vorhanden** = Feld existiert in `ST_HmiCmd`/`ST_HmiSts`, **fehlt** = Wunsch an den SPS-Thread, Annahme, offen.
+Quelle: Cmd = `stCmd`, Sts = `stSts`, CNC = TF5310-Datenmodell, Param = `ST_MachineParams`, HMI = nur im HMI-Server. Status: **vorhanden** = Feld existiert in `ST_HmiCmd`/`ST_HmiSts`, **fehlt** = Wunsch an den SPS-Thread, Annahme, offen. Stand 05.11. 21:24: alle Wünsche der HMI bis auf aDI/aDO und getrennte Feldbuszustände sind in den Typen.
 
 ## In jedem Bild: Kopfzeile und Meldezeile
 
@@ -56,10 +56,10 @@ Achsen verfahren per Touch oder Handrad, Schrittweiten, Eilgang, Spindel und Hil
 |---|---|---|---|---|---|
 | stCmd.bJogPlus / bJogMinus / nJogAxis | BOOL / USINT | H->S | Cmd | gehalten, 1=X 2=Y 3=Z | vorhanden |
 | stCmd.bJogRapid | BOOL | H->S | Cmd | Eilgang beim Tippen | vorhanden |
-| Schrittweite (kontinuierlich, 0,01 / 0,1 / 1 / 10 mm) | REAL | H->S | Cmd | stCmd.rJogStepMm, 0 = kontinuierlich | fehlt |
+| stCmd.rJogStepMm | REAL | H->S | Cmd | 0 = kontinuierlich, sonst 0,01 / 0,1 / 1 / 10 mm | vorhanden |
 | Tipp-Override | UINT | H->S | CNC | %, über CNC-Override | Annahme |
-| Handrad: Freigabe, Achse, Untersetzung (x1/x10/x100) | BOOL / USINT / USINT | H->S | Cmd | bHandwheelEnable, nHandwheelAxis, nHandwheelRatio; nur M1 mit Bestandsgerät | fehlt |
-| stSts.bHandwheelActive | BOOL | S->H | Sts |  | fehlt |
+| stCmd.bHandwheelEnable / nHandwheelAxis / nHandwheelRatio | BOOL / USINT / USINT | H->S | Cmd | Achse 1=X 2=Y 3=Z, Untersetzung 1/10/100; nur M1 mit Bestandsgerät | vorhanden |
+| stSts.bHandwheelActive | BOOL | S->H | Sts |  | vorhanden |
 | stCmd.bSpindleOn / bSpindleCcw / rSpindleSetRpm | BOOL / BOOL / REAL | H->S | Cmd | nur Hand, 1/min | vorhanden |
 | stCmd.bExtraction / bBlowAir / bVacuum | BOOL | H->S | Cmd |  | vorhanden |
 | Nullpunkt setzen (aktuelle Position) | Aktion | H->S | CNC | CNC-Nullpunktverschiebung direkt | Annahme |
@@ -71,12 +71,12 @@ Referenzfahrt aller Achsen oder einzeln, mit Anzeige der Sequenz. Funktionsliste
 | Variable | Typ | Richtung | Quelle | Einheit / Hinweis | Status |
 |---|---|---|---|---|---|
 | stCmd.bHomeRequest | BOOL | H->S | Cmd | Impuls, alle Achsen | vorhanden |
-| Einzelachse referenzieren (X, Y, Z) | BOOL | H->S | Cmd | stCmd.bHomeAxis[1..3] | fehlt |
-| Referenzfahrt abbrechen | BOOL | H->S | Cmd | stCmd.bHomeAbort, sonst über bHold/bAbort | fehlt |
+| stCmd.bHomeAxis[1..3] | BOOL | H->S | Cmd | Impuls, 1=X 2=Y 3=Z (SPS mappt intern) | vorhanden |
+| stCmd.bHomeAbort | BOOL | H->S | Cmd | Impuls | vorhanden |
 | stSts.bAllHomed | BOOL | S->H | Sts |  | vorhanden |
-| Referenzstatus je Achse (offen, läuft, fertig, Fehler) | E_HomeState[1..3] | S->H | Sts | stSts.eHomeState[]; Gantry: beide Seiten, dann Ausrichten | fehlt |
-| Referenzschritt der Sequenz | USINT | S->H | Sts | stSts.nHomeStep für die Anzeige | fehlt |
-| Endschalter, Referenzschalter je Achse | BOOL | S->H | Sts | Lage und Anzahl laut Schaltplan, fehlt | offen |
+| stSts.eHomeState[1..3] | E_HomeState | S->H | Sts | Open, Running, Done, Error; Gantry: beide Seiten, dann Ausrichten | vorhanden |
+| stSts.nHomeStep | USINT | S->H | Sts | Schritt der Sequenz für die Anzeige | vorhanden |
+| stSts.aDrive[1..4].bHwLimitPlus / bHwLimitMinus | BOOL | S->H | Sts | Ruhestrom: FALSE = ausgelöst; Referenzschalter laut Schaltplan offen | offen |
 | Alarm 320 HomingLost | E_AlarmId | S->H | Sts | Referenz verloren, Klasse R4 | vorhanden |
 
 ## Automatik
@@ -88,7 +88,7 @@ Programmlauf mit Satzanzeige, Overrides, Einzelsatz, Trockenlauf. Funktionsliste
 | stCmd.bStart | BOOL | H->S | Cmd | Impuls, startet und setzt fort | vorhanden |
 | stCmd.bHold | BOOL | H->S | Cmd | Impuls, Vorschubhalt | vorhanden |
 | stCmd.bAbort | BOOL | H->S | Cmd | Impuls, Programmabbruch | vorhanden |
-| Einzelsatz, Trockenlauf, optionaler Halt M01 | BOOL | H->S | Cmd | stCmd.bSingleBlock, bDryRun, bOptStop | fehlt |
+| stCmd.bSingleBlock / bDryRun / bOptStop | BOOL | H->S | Cmd | Einzelsatz, Trockenlauf (Spindel gesperrt), optionaler Halt M01 | vorhanden |
 | Overrides Vorschub, Eilgang, Spindel | UINT | H->S | CNC | %, direkt am CNC-Kanal | Annahme |
 | Satznummer, Satztext (Fenster), Restweg | UDINT / STRING / LREAL | S->H | CNC | Programmanzeige aus TF5310 G-Code-Editor | Annahme |
 | stSts.eState | E_MachState | S->H | Sts | Execute, Held, Aborted | vorhanden |
@@ -136,7 +136,7 @@ Aktive Alarme mit Abhilfe, Historie, Quittieren. Funktionsliste: 2.9.1, 2.9.2, 2
 
 | Variable | Typ | Richtung | Quelle | Einheit / Hinweis | Status |
 |---|---|---|---|---|---|
-| Liste aktive Meldungen (ID, Klasse, aktiv, quittiert, Zeit) | ARRAY OF ST_Alarm | S->H | Sts | stSts.aAlarms[0..14] oder EventLogger; heute nur die höchste Meldung | fehlt |
+| stSts.aAlarms[0..14] | ST_Alarm | S->H | Sts | nId, eClass, bActive, bLatched; Index = Meldeslot; Zeit je Meldung kommt mit dem EventLogger-Adapter | vorhanden |
 | Meldehistorie (Journal) | EventLogger-Abfrage | S->H | HMI | Filter nach Klasse und Datum | Annahme |
 | stCmd.bAck | BOOL | H->S | Cmd | R3 und R4 bleiben bis zur Quittierung | vorhanden |
 | Meldetexte und Abhilfe | Textkatalog de | - | HMI | Tabelle unten, ID wie E_AlarmId | Vorschlag |
@@ -148,11 +148,11 @@ Achsstatus, Schleppabstand, Ein- und Ausgänge, Spindel und Feldbus. Funktionsli
 | Variable | Typ | Richtung | Quelle | Einheit / Hinweis | Status |
 |---|---|---|---|---|---|
 | Achsen: Schleppabstand, Ist-Geschwindigkeit | LREAL | S->H | CNC | mm, mm/min | Annahme |
-| Antriebe iMD 40: Zustand, Fehlercode, Freigabe je Regler (4) | ST_AxisDrive[1..4] | S->H | Sts | stSts.aDrive[1..4]; Emergency-Code über CANopen | fehlt |
-| Feldbus: EtherCAT, CANopen Zustand | ENUM | S->H | Sts | stSts.eEtherCat, eCanopen; Alarm 310 | fehlt |
-| FU-Störung, Kaltleiter-Auslösung | BOOL | S->H | Sts | über Alarme 200 und 201, Rohsignal zusätzlich gewünscht | fehlt |
+| stSts.aDrive[1..4] | ST_AxisDrive | S->H | Sts | bReady, bEnabled, bFault, nFaultCode, rFollowErr; 1=Y1 2=Y2 3=X 4=Z [Annahme] | vorhanden |
+| stSts.bFieldbusOk | BOOL | S->H | Sts | Sammelstatus, Alarm 310; getrennte Zustände EtherCAT/CANopen nicht vorgesehen | vorhanden |
+| stSts.bFuFault / bPtcTrip | BOOL | S->H | Sts | Rohsignale, zusätzlich Alarme 200 und 201 | vorhanden |
 | Druckluft, Absaugung | BOOL | S->H | Sts | über Alarme 110 und 120 | vorhanden |
-| Digitale Ein- und Ausgänge | ARRAY OF BOOL | S->H | Sts | stSts.aDI, aDO; Belegung fehlt (Schaltplan) | offen |
+| Digitale Ein- und Ausgänge | ARRAY OF BOOL | S->H | Sts | nicht in der Grundversion (SPS-Thread); Belegung fehlt (Schaltplan). Bild zeigt vorerst nur Statussignale | offen |
 | Ausgangstest (Force) | BOOL | H->S | Cmd | nur Service, nur Stillstand, nie Sicherheitsausgang | Annahme |
 
 ## Service
@@ -171,18 +171,6 @@ Anmeldung, Parameter, Software-Endschalter, Wartung, Sicherung, Version. Funktio
 
 ## Wünsche an ST_HmiCmd und ST_HmiSts (Status "fehlt")
 
-- Schrittweite (kontinuierlich, 0,01 / 0,1 / 1 / 10 mm): stCmd.rJogStepMm, 0 = kontinuierlich
-- Handrad: Freigabe, Achse, Untersetzung (x1/x10/x100): bHandwheelEnable, nHandwheelAxis, nHandwheelRatio; nur M1 mit Bestandsgerät
-- stSts.bHandwheelActive: 
-- Einzelachse referenzieren (X, Y, Z): stCmd.bHomeAxis[1..3]
-- Referenzfahrt abbrechen: stCmd.bHomeAbort, sonst über bHold/bAbort
-- Referenzstatus je Achse (offen, läuft, fertig, Fehler): stSts.eHomeState[]; Gantry: beide Seiten, dann Ausrichten
-- Referenzschritt der Sequenz: stSts.nHomeStep für die Anzeige
-- Einzelsatz, Trockenlauf, optionaler Halt M01: stCmd.bSingleBlock, bDryRun, bOptStop
-- Liste aktive Meldungen (ID, Klasse, aktiv, quittiert, Zeit): stSts.aAlarms[0..14] oder EventLogger; heute nur die höchste Meldung
-- Antriebe iMD 40: Zustand, Fehlercode, Freigabe je Regler (4): stSts.aDrive[1..4]; Emergency-Code über CANopen
-- Feldbus: EtherCAT, CANopen Zustand: stSts.eEtherCat, eCanopen; Alarm 310
-- FU-Störung, Kaltleiter-Auslösung: über Alarme 200 und 201, Rohsignal zusätzlich gewünscht
 
 ## Meldetexte und Abhilfe (Vorschlag, Klassen laut SPS-Thread)
 
