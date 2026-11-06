@@ -12,6 +12,8 @@ VAR_INPUT
     bRapid       : BOOL;
     nHeartbeat   : UINT;
     tHmiTimeout  : TIME;
+    bPlusBlocked  : BOOL;     (* G-01: Endschalter Plus-Seite der gewaehlten Achse ausgeloest, Tippen+ gesperrt *)
+    bMinusBlocked : BOOL;     (* Minus-Seite ausgeloest, Tippen- gesperrt *)
 END_VAR
 VAR_OUTPUT
     bJogPlusReq  : BOOL;
@@ -58,6 +60,9 @@ END_IF
 IF NOT bOkNow THEN
     bActPlus := FALSE; bActMinus := FALSE; bPendPlus := FALSE; bPendMinus := FALSE;
 ELSE
+    (* G-01: Ausgeloester Endschalter beendet das Tippen in dieser Richtung sofort, neue Flanke noetig *)
+    IF bPlusBlocked  THEN bActPlus  := FALSE; bPendPlus  := FALSE; END_IF
+    IF bMinusBlocked THEN bActMinus := FALSE; bPendMinus := FALSE; END_IF
     IF NOT bPlus  OR bMinus THEN bActPlus  := FALSE; bPendPlus  := FALSE; END_IF
     IF NOT bMinus OR bPlus  THEN bActMinus := FALSE; bPendMinus := FALSE; END_IF
     IF (bActPlus OR bActMinus) AND nAxis <> nAxisLatch THEN
@@ -65,10 +70,10 @@ ELSE
     END_IF
     IF rtPlus.Q  AND NOT bMinus THEN bPendPlus  := TRUE; END_IF
     IF rtMinus.Q AND NOT bPlus  THEN bPendMinus := TRUE; END_IF
-    IF bPendPlus AND nStableCyc >= 2 AND NOT bActMinus THEN
+    IF bPendPlus AND nStableCyc >= 2 AND NOT bActMinus AND NOT bPlusBlocked THEN
         bActPlus := TRUE; bPendPlus := FALSE; nAxisLatch := nAxis;
     END_IF
-    IF bPendMinus AND nStableCyc >= 2 AND NOT bActPlus THEN
+    IF bPendMinus AND nStableCyc >= 2 AND NOT bActPlus AND NOT bMinusBlocked THEN
         bActMinus := TRUE; bPendMinus := FALSE; nAxisLatch := nAxis;
     END_IF
 END_IF

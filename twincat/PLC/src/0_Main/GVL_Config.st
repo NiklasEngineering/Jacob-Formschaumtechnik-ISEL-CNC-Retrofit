@@ -4,8 +4,8 @@
    Auf einer realen Maschine darf bSimulationBuild nicht TRUE sein. *)
 VAR_GLOBAL CONSTANT
     eDriveVariant   : E_DriveVariant := E_DriveVariant.Simulation;
-    bSimulationBuild: BOOL := TRUE;
-    sSwVersion      : STRING(15) := '0.1.0';
+    bSimulationBuild: BOOL := (eDriveVariant = E_DriveVariant.Simulation);   (* G-06: nie getrennt von der Antriebsvariante setzen *)
+    sSwVersion      : STRING(15) := '0.11.0';   (* G-18: bei jedem Tag mitpflegen, auch in FB_ParamInit *)
     (* Befund 20: Maschinenkennung kommt aus GVL_Persistent.nMachineId, nicht aus dem Code.
        Nur im Simulationsbuild gilt bei nicht gesetzter Kennung (0) die Kennung 1 [Annahme]. *)
     nMachineIdSimDefault : UINT := 1;

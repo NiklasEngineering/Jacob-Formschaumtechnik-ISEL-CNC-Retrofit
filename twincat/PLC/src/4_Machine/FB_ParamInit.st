@@ -31,7 +31,7 @@ IF NOT bDone THEN
     CASE nMachineId OF
         1:  (* M1 *)
             stParams.nMachineId         := 1;
-            stParams.sSwVersionExpected := '0.1.0';
+            stParams.sSwVersionExpected := '0.11.0';   (* Platzhalter, gleiche Quelle wie GVL_Config.sSwVersion: Pruefung wirkt erst mit externem Parametersatz *)
             stParams.eDriveVariant      := E_DriveVariant.Simulation;   (* [offen] bis Antriebsabbildung steht *)
             stParams.nNumAxes           := 4;
             stParams.nNumCncAxes        := 3;

@@ -94,9 +94,14 @@ CASE eState OF
             bCncStart := TRUE; eState := E_MachState.Execute;
         END_IF
         IF rtAbort.Q THEN bAbortPending := TRUE; eState := E_MachState.Aborted; END_IF
+        IF rtDone.Q THEN eState := E_MachState.Idle; END_IF   (* G-02: Programmende waehrend Halt *)
     E_MachState.Aborted, E_MachState.Fault:
         IF rtAck.Q AND NOT bAnyR3OrHigher AND NOT bAckPending AND NOT bAbortPending THEN eState := E_MachState.Stopped; END_IF
 END_CASE
+
+(* G-02: Vorschubhalt als Pegel, solange der Zustand Held ist (ein Ein-Zyklus-Impuls reicht fuer die CNC nicht).
+   Er faellt mit dem Fortsetzen (Start) oder Abbruch. [offen] HLI-Semantik bei der Anbindung dokumentieren. *)
+IF eState = E_MachState.Held THEN bCncHold := TRUE; END_IF
 
 (* Abbruch bleibt angefordert, bis die CNC steht *)
 IF bAbortPending AND NOT bProgramActive AND ePrev = eState AND NOT (rtAbort.Q) THEN

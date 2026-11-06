@@ -5,6 +5,9 @@ VAR_INPUT
     bSafeEnable : BOOL;
     bHomeReset  : BOOL;     (* Impuls: Referenzstatus loeschen *)
     bHomeCmd    : BOOL;     (* Pegel: Referenzfahrt laeuft *)
+    bInjLimitPlus  : BOOL;  (* nur Simulation/Test: Endschalter Plus ausloesen *)
+    bInjLimitMinus : BOOL;  (* nur Simulation/Test: Endschalter Minus ausloesen *)
+    bInjFault      : BOOL;  (* nur Simulation/Test: Antriebsfehler ausloesen *)
 END_VAR
 VAR_IN_OUT
     stAxis : ST_AxisDrive;
@@ -17,10 +20,10 @@ END_VAR
 tonEnable(IN := stAxis.bEnableReq AND bSafeEnable, PT := T#200MS);
 stAxis.bReady        := TRUE;
 stAxis.bEnabled      := tonEnable.Q;
-stAxis.bFault        := FALSE;
-stAxis.nFaultCode    := 0;
-stAxis.bHwLimitPlus  := TRUE;
-stAxis.bHwLimitMinus := TRUE;
+stAxis.bFault        := bInjFault;
+stAxis.nFaultCode    := SEL(bInjFault, 0, 16#FFFF0099);
+stAxis.bHwLimitPlus  := NOT bInjLimitPlus;    (* Ruhestrom: FALSE = ausgeloest *)
+stAxis.bHwLimitMinus := NOT bInjLimitMinus;
 
 (* Referenzstatus (einzige Quelle, Befund 3): nach 2 s Referenzfahrt gesetzt, bei Reset oder Antriebsfehler geloescht *)
 tonHome(IN := bHomeCmd AND stAxis.bEnabled, PT := T#2S);

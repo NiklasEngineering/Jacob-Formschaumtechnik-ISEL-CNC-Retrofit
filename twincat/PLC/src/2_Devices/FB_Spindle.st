@@ -24,6 +24,7 @@ VAR_INPUT
     rVoltMax      : REAL;
     tRunUp        : TIME;
     tStandstill   : TIME;
+    bAllowPend    : BOOL := TRUE; (* G-11: Start darf auf Stillstand warten (Programm). FALSE (Hand): Start waehrend des Auslaufs wird verworfen *)
 END_VAR
 VAR_OUTPUT
     bRunCmd       : BOOL;        (* Ausgang Start *)
@@ -49,6 +50,7 @@ VAR
     nDirAct    : INT;            (* 0 = keine Anforderung, 1 = rechts, 2 = links *)
     nDirPend   : INT;            (* wartet auf Stillstand, 0 = nichts *)
     bStopCond  : BOOL;
+    bSpeedInvalid : BOOL;        (* G-12: Start ohne gueltigen S-Wert *)
 END_VAR
 
 rtAck(CLK := bAckReset);
@@ -73,8 +75,8 @@ ELSE
     IF NOT bStartCw  AND nDirPend = 1 THEN nDirPend := 0; END_IF
     IF NOT bStartCcw AND nDirPend = 2 THEN nDirPend := 0; END_IF
     (* neuer Start nur mit steigender Flanke *)
-    IF rtCw.Q  AND bStartCw  AND NOT bStartCcw THEN nDirPend := 1; END_IF
-    IF rtCcw.Q AND bStartCcw AND NOT bStartCw  THEN nDirPend := 2; END_IF
+    IF rtCw.Q  AND bStartCw  AND NOT bStartCcw AND (bAllowPend OR bStandstillOk) THEN nDirPend := 1; END_IF
+    IF rtCcw.Q AND bStartCcw AND NOT bStartCw  AND (bAllowPend OR bStandstillOk) THEN nDirPend := 2; END_IF
     (* Start erst, wenn die Spindel steht (auch bei Richtungsumkehr) *)
     IF nDirPend <> 0 AND nDirAct = 0 AND bStandstillOk THEN
         nDirAct := nDirPend; nDirPend := 0;
@@ -82,13 +84,15 @@ ELSE
 END_IF
 
 bWantRun := nDirAct <> 0;
-bRunCmd  := bWantRun;
+(* G-12: Kein gueltiger S-Wert (0 oder fehlt): Spindel nicht anfahren, Meldung 202 (R3) *)
+bSpeedInvalid := bWantRun AND rSetRpm <= 0.0;
+bRunCmd  := bWantRun AND NOT bSpeedInvalid;
 bDirCcw  := nDirAct = 2;
 
 (* Drehzahl begrenzen und Override anwenden *)
 rRpm := rSetRpm * LIMIT(0.0, rOverridePct, 150.0) / 100.0;
 rRpm := LIMIT(rMinRpm, rRpm, rMaxRpm);
-IF bWantRun AND rMaxRpm > 0.0 THEN
+IF bRunCmd AND rMaxRpm > 0.0 THEN
     rVoltOut := rRpm / rMaxRpm * rVoltMax;
     rActRpm  := rRpm;
 ELSE
@@ -99,7 +103,7 @@ END_IF
 (* Rueckmeldung: nach Hochlaufzeit muss FU "Drehzahl erreicht" melden *)
 tonRunUp(IN := bWantRun, PT := tRunUp);
 bRunning    := bWantRun AND bFuAtSpeed;
-bNoFeedback := tonRunUp.Q AND NOT bFuAtSpeed;
+bNoFeedback := (tonRunUp.Q AND NOT bFuAtSpeed) OR bSpeedInvalid;
 
 (* Auslaufzeit: Stillstand gilt erst nach Ablauf *)
 tonStop(IN := NOT bWantRun, PT := tStandstill);

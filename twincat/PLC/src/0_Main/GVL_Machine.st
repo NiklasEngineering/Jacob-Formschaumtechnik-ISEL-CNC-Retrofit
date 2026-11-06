@@ -29,4 +29,5 @@ VAR_GLOBAL
     nCncHandwheelAxis  : USINT;
     nCncHandwheelRatio : USINT;
     bHasHandwheel  : BOOL;     (* [offen] nur M1 mit Bestandsgeraet *)
+    bCncJogCreep   : BOOL;     (* Freifahren vom Endschalter: CNC soll im Schleichgang tippen (HLI-Anbindung offen) *)
 END_VAR

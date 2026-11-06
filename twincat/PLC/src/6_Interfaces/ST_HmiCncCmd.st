@@ -10,5 +10,7 @@ STRUCT
     aWcs           : ARRAY[54..59] OF ST_Wcs;
     bTableWrite    : BOOL;                       (* Impuls: Puffer uebernehmen *)
     bWcsSetCurrent : BOOL;                       (* Impuls: aktuelle Position als Nullpunkt von nActWcs *)
+    bWcsTableWrite : BOOL;                       (* Impuls: nur die Nullpunkte (G54..G59) aus aWcs uebernehmen. bTableWrite uebernimmt nur noch Werkzeuge (G-16) *)
+    nSpeedLimitPct : UINT := 25;                 (* % 1..100, Inbetriebnahme-Begrenzung (Service). Wirkt nur nach unten auf Vorschub-/Eilgang-Override und Tippen. Anheben nur im Stillstand. *)
 END_STRUCT
 END_TYPE

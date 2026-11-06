@@ -40,6 +40,16 @@ VAR
     bHandSpindleBlock : BOOL; (* Hand-Spindel gesperrt bis bSpindleOn einmal FALSE war (Lebenszeichen weg, nicht Hand) *)
     bHandSpindleOn : BOOL;    (* wirksame Hand-Anforderung Spindel *)
     tofModeBlocked : TOF;     (* Hinweis "Betriebsartwechsel abgelehnt" fuer die HMI halten *)
+    bLimHitPlus      : BOOL;
+    bLimHitMinus     : BOOL;
+    bJogPlusBlocked  : BOOL;
+    bJogMinusBlocked : BOOL;
+    rtHandOn         : R_TRIG;
+    bHandCcw         : BOOL;
+    bDryRunEff       : BOOL;
+    bSpindleLocked   : BOOL;
+    bVacuumReq       : BOOL;
+    bHomingLostInRun : BOOL;
 END_VAR
 
 (* 1. Parameter: initialisieren und pruefen, bei unplausiblen Werten bleibt die Maschine gesperrt *)
@@ -62,8 +72,10 @@ FOR i := 1 TO 4 DO
     GVL_IO.aAxis[i].bResetReq  := GVL_HMI.stCmd.bAck;     (* Antriebsfehler quittieren (Befund 14) *)
     IF GVL_Config.eDriveVariant = E_DriveVariant.Simulation THEN
     fbAxisSim[i](bSafeEnable := fbSafety.bDrivesAllowed,
-                 bHomeReset := fbHoming.aResetHomed[aGrpOfAxis[i]],
-                 bHomeCmd := fbHoming.bHomeCmd AND fbHoming.nActiveGroup = aGrpOfAxis[i],
+                 bHomeReset := fbHoming.aResetHomed[GVL_Config.aDriveToGroup[i]],
+                 bHomeCmd := fbHoming.bHomeCmd AND fbHoming.nActiveGroup = GVL_Config.aDriveToGroup[i],
+                 bInjLimitPlus := GVL_IO.aSimLimitPlus[i], bInjLimitMinus := GVL_IO.aSimLimitMinus[i],
+                 bInjFault := GVL_IO.aSimFault[i],
                  stAxis := GVL_IO.aAxis[i]);
     ELSE
         (* Befund 9: echte Abbildung fehlt, FB_AxisMap_Canopen sperrt die Maschine (Fehler FFFF0001) *)
@@ -139,8 +151,11 @@ fbInterlocks(eMode := fbMode.eMode, eState := fbState.eState, bSafetyOk := fbSaf
              bHomingBusy := fbHoming.bBusy, bLimitFreeRun := bLimitFreeRun);
 
 (* 6. Zustand *)
+(* G-10: Geht die Referenz im laufenden oder gehaltenen Programm verloren, wirkt das wie R3 (Abbruch). Sonst nur Warnung R1. *)
+bHomingLostInRun := fbSupervisor.bHomingLost AND (fbState.eState = E_MachState.Execute OR fbState.eState = E_MachState.Held);
 fbState(bSafetyOk := fbSafety.bSafetyOk, bDrivesAllowed := fbSafety.bDrivesAllowed,
-        bAnyR2OrHigher := fbAlarms.bAnyR2OrHigher, bAnyR3OrHigher := fbAlarms.bAnyR3OrHigher,
+        bAnyR2OrHigher := fbAlarms.bAnyR2OrHigher OR bHomingLostInRun,
+        bAnyR3OrHigher := fbAlarms.bAnyR3OrHigher OR bHomingLostInRun,
         bAnyR4 := fbAlarms.bAnyR4, bAckPending := fbAlarms.bAckPending,
         bStartOk := fbInterlocks.bProgramStartOk AND NOT fbTool.bHoldProgram,
         bStartCmd := GVL_HMI.stCmd.bStart, bHoldCmd := GVL_HMI.stCmd.bHold OR fbMFunc.bProgramHalt,
@@ -158,14 +173,24 @@ ELSIF NOT GVL_HMI.stCmd.bSpindleOn THEN
     bHandSpindleBlock := FALSE;
 END_IF
 bHandSpindleOn := GVL_HMI.stCmd.bSpindleOn AND NOT bHandSpindleBlock;
+(* G-11: Drehrichtung wird beim Einschalten festgehalten, Umschalten bei laufender oder wartender Spindel startet nichts *)
+rtHandOn(CLK := bHandSpindleOn);
+IF rtHandOn.Q THEN bHandCcw := GVL_HMI.stCmd.bSpindleCcw; END_IF
+(* G-12: Trockenlauf wirkt nur in Auto und nur so, wie er beim Programmstart stand (nicht mitten im Programm) *)
+IF fbState.eState <> E_MachState.Execute AND fbState.eState <> E_MachState.Held THEN
+    bDryRunEff := GVL_HMI.stCmd.bDryRun;
+END_IF
+bSpindleLocked := fbMode.eMode = E_OpMode.Setup OR (fbMode.eMode = E_OpMode.Auto AND bDryRunEff);
 fbMFunc(nMCode := GVL_Machine.nCncMCode, bMStrobe := GVL_Machine.bCncMStrobe,
         bSpindleOk := fbInterlocks.bSpindleOk, bAuxOk := fbInterlocks.bAuxOk,
-        bReset := fbState.bSpindleStop OR GVL_Machine.bCncProgramDone, bOptStop := GVL_HMI.stCmd.bOptStop);
+        bReset := fbState.bSpindleStop OR GVL_Machine.bCncProgramDone, bOptStop := GVL_HMI.stCmd.bOptStop,
+        bSpindleRunning := fbSpindle.bRunning, bSpindleSkip := bSpindleLocked);
 fbSpindle(bRelease := fbInterlocks.bSpindleOk AND NOT fbState.bSpindleStop AND NOT fbTool.bSpindleLock,
           bStop := fbState.bSpindleStop,
-          bSetupLocked := fbMode.eMode = E_OpMode.Setup OR GVL_HMI.stCmd.bDryRun,
-          bStartCw := (fbMFunc.bSpindleCw AND fbMode.eMode = E_OpMode.Auto) OR (bHandSpindleOn AND NOT GVL_HMI.stCmd.bSpindleCcw),
-          bStartCcw := (fbMFunc.bSpindleCcw AND fbMode.eMode = E_OpMode.Auto) OR (bHandSpindleOn AND GVL_HMI.stCmd.bSpindleCcw),
+          bSetupLocked := bSpindleLocked,
+          bAllowPend := fbMode.eMode = E_OpMode.Auto,   (* G-11: nur das Programm darf auf Stillstand warten, Hand-Start wird sonst verworfen *)
+          bStartCw := (fbMFunc.bSpindleCw AND fbMode.eMode = E_OpMode.Auto) OR (bHandSpindleOn AND NOT bHandCcw),
+          bStartCcw := (fbMFunc.bSpindleCcw AND fbMode.eMode = E_OpMode.Auto) OR (bHandSpindleOn AND bHandCcw),
           rSetRpm := SEL(fbMode.eMode = E_OpMode.Auto, GVL_HMI.stCmd.rSpindleSetRpm, GVL_Machine.rCncSpindleRpm),
           rOverridePct := UINT_TO_REAL(GVL_HmiCnc.stCncSts.nOvrSpindle),
           bFuReady := GVL_IO.bFuReady, bFuAtSpeed := GVL_IO.bFuAtSpeed, bPtcOk := GVL_IO.bSpindlePtcOk,
@@ -178,12 +203,15 @@ GVL_IO.rSpindleVolt := fbSpindle.rVoltOut;
 
 fbTool(bM6Request := fbMFunc.bToolChangeReq, nToolNo := GVL_Machine.nCncToolNo,
        bSpindleStopped := fbSpindle.bStandstillOk, bConfirm := GVL_HMI.stCmd.bToolChangeDone,
-       bAbort := GVL_HMI.stCmd.bAbort);
+       bAbort := GVL_HMI.stCmd.bAbort OR fbState.eState = E_MachState.EStop OR fbState.eState = E_MachState.Aborted
+                 OR fbState.eState = E_MachState.Fault);   (* G-05: Anforderung faellt bei Abbruch, R3 und NOT-HALT *)
 
 (* Hilfsausgaenge: von Hand oder per M-Code, nur mit Freigabe *)
 GVL_IO.bExtractionOut := fbInterlocks.bAuxOk AND (fbMFunc.bExtraction OR GVL_HMI.stCmd.bExtraction);
 GVL_IO.bBlowAirOut    := fbInterlocks.bAuxOk AND (fbMFunc.bBlowAir OR GVL_HMI.stCmd.bBlowAir);
-GVL_IO.bVacuumOut     := fbInterlocks.bAuxOk AND (fbMFunc.bVacuum OR GVL_HMI.stCmd.bVacuum);
+(* G-04: Vakuum (Werkstueckspannung) bleibt bei Abbruch und NOT-HALT gehalten. Einschalten nur mit Freigabe. *)
+bVacuumReq := fbMFunc.bVacuum OR GVL_HMI.stCmd.bVacuum;
+GVL_IO.bVacuumOut     := bVacuumReq AND (fbInterlocks.bAuxOk OR GVL_IO.bVacuumOut);
 
 (* 8. Referenzieren und Tippen *)
 (* Zuordnung HMI-Achse (1=X, 2=Y, 3=Z) zu Referenzgruppe (1=Z, 2=X, 3=Y) *)
@@ -193,8 +221,27 @@ aHomeReq[3] := GVL_HMI.stCmd.bHomeAxis[2];
 fbHoming(bStart := GVL_HMI.stCmd.bHomeRequest, aStartAxis := aHomeReq,
          bAbort := GVL_HMI.stCmd.bAbort OR GVL_HMI.stCmd.bHomeAbort,
          bHomingOk := fbInterlocks.bHomingOk, aHomed := GVL_Machine.aCncHomed);
+(* G-01: Endschalter je Seite der gewaehlten Achse (HMI 1=X -> Antrieb 3, 2=Y -> Antriebe 1 und 2, 3=Z -> Antrieb 4).
+   Ruhestrom: FALSE = ausgeloest. [Annahme] Tippen+ faehrt zur Plus-Seite. Ist ein Endschalter ausgeloest, ist Tippen
+   nur fuer die betroffene Achse und nur in Gegenrichtung erlaubt, ohne Eilgang. *)
+bLimHitPlus := FALSE; bLimHitMinus := FALSE;
+CASE GVL_HMI.stCmd.nJogAxis OF
+    1: bLimHitPlus  := NOT GVL_IO.aAxis[3].bHwLimitPlus;
+       bLimHitMinus := NOT GVL_IO.aAxis[3].bHwLimitMinus;
+    2: bLimHitPlus  := NOT GVL_IO.aAxis[1].bHwLimitPlus  OR NOT GVL_IO.aAxis[2].bHwLimitPlus;
+       bLimHitMinus := NOT GVL_IO.aAxis[1].bHwLimitMinus OR NOT GVL_IO.aAxis[2].bHwLimitMinus;
+    3: bLimHitPlus  := NOT GVL_IO.aAxis[4].bHwLimitPlus;
+       bLimHitMinus := NOT GVL_IO.aAxis[4].bHwLimitMinus;
+END_CASE
+bJogPlusBlocked  := bLimHitPlus;
+bJogMinusBlocked := bLimHitMinus;
+IF aCond[10] AND NOT (bLimHitPlus OR bLimHitMinus) THEN
+    bJogPlusBlocked := TRUE; bJogMinusBlocked := TRUE;   (* Endschalter an einer anderen Achse: diese Achse bleibt stehen *)
+END_IF
+GVL_Machine.bCncJogCreep := bLimitFreeRun;   (* CNC: Freifahren nur im Schleichgang (HLI-Anbindung offen) *)
 fbJog(bJogOk := fbInterlocks.bJogOk, bPlus := GVL_HMI.stCmd.bJogPlus, bMinus := GVL_HMI.stCmd.bJogMinus,
-      nAxis := GVL_HMI.stCmd.nJogAxis, bRapid := GVL_HMI.stCmd.bJogRapid AND NOT bLimitFreeRun,
+      bPlusBlocked := bJogPlusBlocked, bMinusBlocked := bJogMinusBlocked,
+      nAxis := GVL_HMI.stCmd.nJogAxis, bRapid := GVL_HMI.stCmd.bJogRapid AND NOT bLimitFreeRun AND GVL_HmiCnc.stCncSts.nSpeedLimitActivePct >= 50,
       nHeartbeat := GVL_HMI.stCmd.nHeartbeat, tHmiTimeout := GVL_Machine.stParams.tHmiTimeout);
 
 (* CNC-Spiegel (Simulation, bis TF5200 verfuegbar ist) *)
@@ -214,7 +261,7 @@ GVL_Machine.bCncJogRapid := fbJog.bRapidReq;
 GVL_Machine.bCncHomeReq  := fbHoming.bHomeCmd;
 GVL_Machine.nCncHomeGroup:= fbHoming.nActiveGroup;
 GVL_Machine.bCncSingleBlock := GVL_HMI.stCmd.bSingleBlock;
-GVL_Machine.bCncDryRun   := GVL_HMI.stCmd.bDryRun;
+GVL_Machine.bCncDryRun   := bDryRunEff AND fbMode.eMode = E_OpMode.Auto;
 GVL_Machine.bCncOptStop  := GVL_HMI.stCmd.bOptStop;
 GVL_Machine.rCncJogStepMm := GVL_HMI.stCmd.rJogStepMm;
 (* Handrad: nur freigegeben, wenn vorhanden, in Hand und Tippen erlaubt *)

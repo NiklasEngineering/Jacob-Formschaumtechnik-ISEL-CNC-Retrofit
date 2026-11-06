@@ -21,4 +21,8 @@ VAR_GLOBAL
     bVacuumOut           : BOOL;
     (* Achsen, vier Stueck: 1=Y1 Portal links, 2=Y2 Portal rechts, 3=X Quer, 4=Z [Annahme] *)
     aAxis                : ARRAY[1..4] OF ST_AxisDrive;
+    (* Einspeisung fuer Simulation und Test (wirkt nur im Simulationsabbild FB_AxisMap_Simulation) *)
+    aSimLimitPlus  : ARRAY[1..4] OF BOOL;
+    aSimLimitMinus : ARRAY[1..4] OF BOOL;
+    aSimFault      : ARRAY[1..4] OF BOOL;
 END_VAR

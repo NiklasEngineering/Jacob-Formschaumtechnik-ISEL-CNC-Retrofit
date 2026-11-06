@@ -19,5 +19,6 @@ STRUCT
     bProgramLoaded: BOOL;
     bTableWriteOk : BOOL;                        (* Rueckmeldung letzter Schreibvorgang *)
     bTableWriteRejected : BOOL;                  (* abgelehnt, z. B. Programm laeuft *)
+    nSpeedLimitActivePct : UINT := 25;           (* wirksame Inbetriebnahme-Begrenzung in %, nOvrFeed/nOvrRapid sind bereits damit begrenzt *)
 END_STRUCT
 END_TYPE
