@@ -11,6 +11,8 @@ VAR_INPUT
     bAnyR2OrHigher : BOOL;
     bAnyR3OrHigher : BOOL;
     bAirOk         : BOOL;
+    bHomingBusy    : BOOL;      (* Referenzfahrt laeuft (Befund 8c) *)
+    bLimitFreeRun  : BOOL;      (* nur Endschalter-R3 aktiv, Freifahren erlaubt (Befund 15) *)
 END_VAR
 VAR_OUTPUT
     bProgramStartOk : BOOL;   (* Auto: Start erlaubt *)
@@ -23,12 +25,13 @@ END_VAR
 
 bProgramStartOk := eMode = E_OpMode.Auto OR eMode = E_OpMode.Setup;
 bProgramStartOk := bProgramStartOk AND bSafetyOk AND bDrivesEnabled AND bAllHomed
-                   AND NOT bAnyR2OrHigher AND bAirOk AND eState <> E_MachState.Execute;
+                   AND NOT bAnyR2OrHigher AND bAirOk AND eState <> E_MachState.Execute AND NOT bHomingBusy;
 
 bJogOk := eMode = E_OpMode.Hand AND bSafetyOk AND bDrivesEnabled AND bHmiLinkOk
-          AND NOT bAnyR3OrHigher AND eState <> E_MachState.Execute;
+          AND (NOT bAnyR3OrHigher OR bLimitFreeRun) AND eState <> E_MachState.Execute AND NOT bHomingBusy;
 
-bHomingOk := bSafetyOk AND bDrivesEnabled AND NOT bAnyR3OrHigher AND eState <> E_MachState.Execute;
+(* Referenzfahrt nur in Hand und nur im Zustand Idle (nicht in Held/Execute) *)
+bHomingOk := eMode = E_OpMode.Hand AND bSafetyOk AND bDrivesEnabled AND NOT bAnyR3OrHigher AND eState = E_MachState.Idle;
 
 bSpindleOk := bSafetyOk AND NOT bAnyR3OrHigher AND eMode <> E_OpMode.Setup;
 

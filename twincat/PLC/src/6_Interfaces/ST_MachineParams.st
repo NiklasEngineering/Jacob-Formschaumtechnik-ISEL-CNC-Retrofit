@@ -4,7 +4,9 @@ TYPE ST_MachineParams :
 STRUCT
     nMachineId        : UINT;
     sSwVersionExpected: STRING(15);
-    nNumAxes          : USINT;             (* NC-Achsen ohne Spindel *)
+    eDriveVariant     : E_DriveVariant;    (* muss zur Build-Konfiguration passen (Befund 20) *)
+    nNumAxes          : USINT;             (* Antriebe ohne Spindel: Y1, Y2, X, Z = 4 *)
+    nNumCncAxes       : USINT;             (* CNC-/HMI-Achsen X, Y, Z = 3 (Y als Gantry) *)
     rSpindleMaxRpm    : REAL;              (* 16600 fuer VKH63/26-90T *)
     rSpindleMinRpm    : REAL;
     rSpindleVoltMax   : REAL;              (* 10.0 V entspricht rSpindleMaxRpm *)
