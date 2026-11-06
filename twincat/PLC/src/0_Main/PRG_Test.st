@@ -48,7 +48,8 @@ CASE nStep OF
 
     10: (* T01 Anlauf: Maschine startet gelatcht, nicht frei *)
         IF tonStep.Q THEN
-            IF GVL_HMI.stSts.eState <> E_MachState.Stopped THEN sMsg := 'T01 Anlauf nicht gelatcht (Zustand nicht Stopped)'; bFailNow := TRUE; END_IF
+            (* Eingaenge sind jetzt in Ordnung, aber ohne Quittierung darf die Maschine nicht frei sein (EStop oder Stopped) *)
+            IF GVL_HMI.stSts.eState = E_MachState.Idle OR GVL_HMI.stSts.eState = E_MachState.Execute OR GVL_HMI.stSts.bDrivesEnabled THEN sMsg := 'T01 Anlauf ohne Quittierung frei'; bFailNow := TRUE; END_IF
             GVL_HMI.stCmd.bAck := TRUE;
             nStep := 20; tWait := T#1S; bNext := TRUE;
         END_IF
