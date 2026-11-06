@@ -16,6 +16,7 @@ VAR
     bRelay      : BOOL := TRUE;         (* Rueckmeldung Sicherheitsrelais, NOT-HALT = FALSE *)
     bFailNow    : BOOL;
     sMsg        : STRING(100);
+    bHbStop     : BOOL;                 (* TRUE = simuliertes Lebenszeichen der HMI ausgefallen *)
 END_VAR
 
 IF NOT (bTestEnable AND GVL_Config.bSimulationBuild) THEN
@@ -25,7 +26,7 @@ END_IF
 
 (* Simulierte HMI: Lebenszeichen alle 100 ms. Simulierter Umrichter: Drehzahl erreicht folgt dem Start. *)
 tonHb(IN := NOT tonHb.Q, PT := T#100MS);
-IF tonHb.Q THEN GVL_HMI.stCmd.nHeartbeat := GVL_HMI.stCmd.nHeartbeat + 1; END_IF
+IF tonHb.Q AND NOT bHbStop THEN GVL_HMI.stCmd.nHeartbeat := GVL_HMI.stCmd.nHeartbeat + 1; END_IF
 GVL_IO.bFuAtSpeed := GVL_IO.bSpindleRun;
 
 (* Simulierte Eingaenge: alles in Ordnung, nur das Sicherheitsrelais steuert der Test *)
@@ -156,13 +157,41 @@ CASE nStep OF
             nStep := 160; tWait := T#500MS; bNext := TRUE;
         END_IF
 
-    160: (* Ende *)
+    160: (* Spindel erneut starten (Auslaufzeit abwarten), danach HMI-Verlust *)
         IF tonStep.Q THEN
-            bTestDone := TRUE;
-            nStep := 170;
+            GVL_HMI.stCmd.bSpindleOn := TRUE;
+            nStep := 170; tWait := T#13S; bNext := TRUE;
         END_IF
 
-    170: ;
+    170: (* T13a Spindel laeuft, dann Lebenszeichen der HMI ausfallen lassen *)
+        IF tonStep.Q THEN
+            IF NOT GVL_IO.bSpindleRun THEN sMsg := 'T13a Spindel startet nach Stillstand nicht'; bFailNow := TRUE; END_IF
+            bHbStop := TRUE;
+            nStep := 180; tWait := T#1500MS; bNext := TRUE;
+        END_IF
+
+    180: (* T13 Spindel stoppt bei HMI-Verlust, Meldung 330 steht *)
+        IF tonStep.Q THEN
+            IF GVL_IO.bSpindleRun THEN sMsg := 'T13 Spindel laeuft bei HMI-Verlust weiter'; bFailNow := TRUE; END_IF
+            IF NOT GVL_HMI.stSts.aAlarms[13].bActive THEN sMsg := 'T13b Meldung 330 (HMI-Verbindung) fehlt'; bFailNow := TRUE; END_IF
+            bHbStop := FALSE;
+            nStep := 190; tWait := T#1500MS; bNext := TRUE;
+        END_IF
+
+    190: (* T14 kein Selbstanlauf der Spindel bei Rueckkehr der HMI *)
+        IF tonStep.Q THEN
+            IF GVL_IO.bSpindleRun THEN sMsg := 'T14 Spindel startet bei Rueckkehr der HMI von selbst'; bFailNow := TRUE; END_IF
+            GVL_HMI.stCmd.bSpindleOn := FALSE;
+            nStep := 200; tWait := T#500MS; bNext := TRUE;
+        END_IF
+
+    200: (* Ende *)
+        IF tonStep.Q THEN
+            bTestDone := TRUE;
+            nStep := 210;
+        END_IF
+
+    210: ;
 END_CASE
 
 IF bFailNow THEN
