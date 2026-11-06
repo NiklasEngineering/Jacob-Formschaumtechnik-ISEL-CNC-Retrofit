@@ -7,6 +7,8 @@ VAR_GLOBAL
     bCncMStrobe    : BOOL;
     nCncToolNo     : UINT;
     bCncProgramDone: BOOL;
+    bCncProgramActive : BOOL;  (* Programm laeuft oder Achsen fahren noch (Befund 4) *)
+    rCncSpindleRpm : REAL;     (* S-Wert aus dem NC-Programm, 1/min (Befund 10) *)
     aCncHomed      : ARRAY[1..3] OF BOOL;
     (* zur CNC *)
     bCncStartReq   : BOOL;

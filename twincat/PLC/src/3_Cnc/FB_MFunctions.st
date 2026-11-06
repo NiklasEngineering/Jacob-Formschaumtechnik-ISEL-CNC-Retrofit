@@ -8,6 +8,8 @@ VAR_INPUT
     bMStrobe    : BOOL;         (* CNC wartet auf Quittung *)
     bSpindleOk  : BOOL;
     bAuxOk      : BOOL;
+    bReset      : BOOL;         (* Abbruch, R3/R4, NOT-HALT, Programmende: alle gehaltenen M-Zustaende loeschen *)
+    bOptStop    : BOOL;         (* optionaler Halt M1 aktiv (aus der HMI) *)
 END_VAR
 VAR_OUTPUT
     bSpindleCw    : BOOL;       (* M3 *)
@@ -27,9 +29,14 @@ END_VAR
 rtStrobe(CLK := bMStrobe);
 bUnknown := FALSE; bToolChangeReq := FALSE; bProgramHalt := FALSE;
 
-IF rtStrobe.Q THEN
+IF bReset THEN
+    bSpindleCw := FALSE; bSpindleCcw := FALSE; bExtraction := FALSE; bBlowAir := FALSE; bVacuum := FALSE;
+END_IF
+
+IF rtStrobe.Q AND NOT bReset THEN
     CASE nMCode OF
         0:  bProgramHalt := TRUE;
+        1:  IF bOptStop THEN bProgramHalt := TRUE; END_IF
         3:  IF bSpindleOk THEN bSpindleCw := TRUE; bSpindleCcw := FALSE; END_IF
         4:  IF bSpindleOk THEN bSpindleCcw := TRUE; bSpindleCw := FALSE; END_IF
         5:  bSpindleCw := FALSE; bSpindleCcw := FALSE;
@@ -38,14 +45,13 @@ IF rtStrobe.Q THEN
         9:  bBlowAir := FALSE;
         10: IF bAuxOk THEN bVacuum := TRUE; END_IF
         11: bVacuum := FALSE;
-        30: bSpindleCw := FALSE; bSpindleCcw := FALSE; bBlowAir := FALSE;
+        2, 30: bSpindleCw := FALSE; bSpindleCcw := FALSE; bBlowAir := FALSE; bExtraction := FALSE; bVacuum := FALSE;
         43: IF bAuxOk THEN bExtraction := TRUE; END_IF
         44: bExtraction := FALSE;
     ELSE
         bUnknown := TRUE;
     END_CASE
-    bAck := TRUE;
-ELSE
-    bAck := FALSE;
 END_IF
+(* Quittung bleibt stehen, bis die CNC den Strobe zurueckgenommen hat (Befund 12) *)
+bAck := bMStrobe;
 END_FUNCTION_BLOCK

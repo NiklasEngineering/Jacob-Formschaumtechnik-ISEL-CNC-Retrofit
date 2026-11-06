@@ -5,6 +5,7 @@ FUNCTION_BLOCK FB_AxisSupervisor
 VAR_INPUT
     bEnableCmd      : BOOL;     (* Reglerfreigabe angefordert *)
     bFieldbusOk     : BOOL;
+    bHomingActive   : BOOL;     (* gewollte Referenzfahrt laeuft: kein Referenzverlust (Befund 5) *)
     rMaxFollowErr   : LREAL;    (* mm, [Annahme] bis Achsdaten vorliegen *)
 END_VAR
 VAR_IN_OUT
@@ -18,6 +19,7 @@ VAR_OUTPUT
     bAllEnabled    : BOOL;
     bAllHomed      : BOOL;
     bHomingLost    : BOOL;      (* Referenz war da und ist weg (Regler aus/Fehler) *)
+    bEnableTimeout : BOOL;      (* Freigabe angefordert, aber Antriebe melden nicht freigegeben (Befund 14) *)
 END_VAR
 VAR
     i           : INT;
@@ -41,6 +43,9 @@ END_FOR
 IF bAllHomed THEN
     bHadHomed := TRUE;
     bHomingLost := FALSE;
+ELSIF bHomingActive THEN
+    bHadHomed := FALSE;
+    bHomingLost := FALSE;
 ELSIF bHadHomed THEN
     bHomingLost := TRUE;
     bHadHomed := FALSE;
@@ -48,4 +53,7 @@ END_IF
 IF NOT bFieldbusOk THEN
     bAllReady := FALSE; bAllEnabled := FALSE;
 END_IF
+
+tonEnable(IN := bEnableCmd AND bFieldbusOk AND NOT bAllEnabled, PT := T#3S);
+bEnableTimeout := tonEnable.Q;
 END_FUNCTION_BLOCK

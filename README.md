@@ -43,3 +43,11 @@ Siehe `config/M1.json`, Feld `offen`, und Kommentare `[Annahme]` / `[offen]` im 
 Antriebsanbindung (CANopen DS402 mit EL6751 im Interpolated Position Mode ist unbestätigt, Rückfall ±10 V),
 Achszuordnung, Endschalter, Z-Bremse, Stoppkategorie des Pilz-Relais, Spindel-Ansteuerung am Commander SK
 (Schaltplan liegt nicht vor).
+
+## Abgleich mit dem TwinCAT-Projekt (Stand 06.11.2026)
+
+Die Quelle der Wahrheit ist ab dem Import das TwinCAT-Projekt auf dem Engineering-Laptop
+(`C:\Beckhoff\TwinCAT\P016`, Git dort mit Tags V0.1 bis V0.4). Die `.st`-Dateien in `twincat/PLC/src/` sind ein
+Export davon, ein Objekt pro Datei (`tools/export_st.ps1`, benoetigt eine offene XAE mit der Solution).
+Aenderungen bitte im TwinCAT-Projekt machen und dann neu exportieren, nicht in den `.st`-Dateien.
+Gebaut ist der Stand fehlerfrei (TwinCAT 3.1 Build 4026, Tc2_CncHli 4.36). Noch nicht auf einer Maschine erprobt.

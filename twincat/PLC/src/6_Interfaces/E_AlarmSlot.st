@@ -1,3 +1,5 @@
+{attribute 'qualified_only'}
+{attribute 'strict'}
 (* Meldekatalog: Slot-Nummer = Index in aCond von FB_AlarmList.
    Klassen siehe E_FaultClass. Texte und Abhilfe stehen in docs/Meldeliste.md (HMI-Thread). *)
 TYPE E_AlarmSlot :

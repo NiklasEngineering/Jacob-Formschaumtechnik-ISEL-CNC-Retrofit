@@ -18,14 +18,16 @@ VAR_OUTPUT
     aList          : ARRAY[0..14] OF ST_Alarm;   (* fuer die HMI *)
 END_VAR
 VAR
-    aId    : ARRAY[0..14] OF INT := [100, 101, 110, 120, 200, 201, 202, 203, 300, 301, 302, 310, 320, 330, 900];
-    aClass : ARRAY[0..14] OF INT := [4, 3, 3, 2, 4, 3, 3, 1, 4, 4, 4, 4, 4, 2, 4];
+    aId    : ARRAY[0..14] OF INT;      (* Kopie aus GVL_AlarmCatalog *)
+    aClass : ARRAY[0..14] OF INT;
     aLatch : ARRAY[0..14] OF BOOL;
     i      : INT;
     rtAck  : R_TRIG;
     nCls   : INT;
 END_VAR
 
+aId := GVL_AlarmCatalog.aAlarmId;
+aClass := GVL_AlarmCatalog.aAlarmClass;
 rtAck(CLK := bAck);
 nActive := 0; nTopId := 0; nTopClass := 0;
 bAnyR2OrHigher := FALSE; bAnyR3OrHigher := FALSE; bAnyR4 := FALSE; bAckPending := FALSE;

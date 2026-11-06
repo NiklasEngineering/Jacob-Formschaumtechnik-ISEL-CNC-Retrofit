@@ -13,7 +13,7 @@ END_VAR
 VAR_OUTPUT
     bSafetyOk     : BOOL;      (* Sicherheitskreis geschlossen *)
     bDrivesAllowed: BOOL;      (* SPS-Freigabe der Antriebe, nur mit Quittierung nach Ausloesung *)
-    bLatched      : BOOL;      (* Wiederanlauf wartet auf Quittierung *)
+    bLatched      : BOOL := TRUE;   (* Wiederanlauf wartet auf Quittierung; nach dem Anlauf immer TRUE (Befund 7) *)
 END_VAR
 VAR
     rtAck       : R_TRIG;
@@ -21,7 +21,8 @@ VAR
 END_VAR
 
 rtAck(CLK := bAck);
-bSafetyOk := bRelayFeedbackOk AND bDoorClosed;
+(* Befund 19: Feldbusausfall zaehlt als offener Sicherheitskreis (Eingaenge koennten auf dem letzten Wert stehen) *)
+bSafetyOk := bRelayFeedbackOk AND bDoorClosed AND bFieldbusOk;
 
 IF NOT bSafetyOk OR NOT bFieldbusOk THEN
     bLatched := TRUE;           (* Wiederanlauf nie automatisch *)
