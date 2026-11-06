@@ -18,6 +18,7 @@ VAR
     sMsg        : STRING(100);
     bHbStop     : BOOL;                 (* TRUE = simuliertes Lebenszeichen der HMI ausgefallen *)
     nIdx        : INT;
+    bDoor       : BOOL := TRUE;         (* Tuer geschlossen *)
 END_VAR
 
 (* G-06: Der Test schreibt Sicherheitseingaenge und darf nur mit dem Simulationsabbild laufen *)
@@ -43,8 +44,8 @@ IF tonHb.Q AND NOT bHbStop THEN GVL_HMI.stCmd.nHeartbeat := GVL_HMI.stCmd.nHeart
 GVL_IO.bFuAtSpeed := GVL_IO.bSpindleRun;
 
 (* Simulierte Eingaenge: alles in Ordnung, nur das Sicherheitsrelais steuert der Test *)
-GVL_IO.bSafetyRelayFeedback := bRelay;
-GVL_IO.bDoorClosed   := TRUE;
+GVL_IO.bSafetyRelayFeedback := bRelay AND bDoor;   (* offene Tuer laesst auch das Pilz-Relais abfallen *)
+GVL_IO.bDoorClosed   := bDoor;
 GVL_IO.bAirOk        := TRUE;
 GVL_IO.bExtractionOk := TRUE;
 GVL_IO.bFuReady      := TRUE;
@@ -442,7 +443,123 @@ CASE nStep OF
         IF tonStep.Q THEN
             GVL_Machine.bCncMStrobe := FALSE; GVL_Machine.nCncMCode := 0;
             GVL_Machine.rCncSpindleRpm := 0.0;
-            nStep := 200; tWait := T#300MS; bNext := TRUE;
+            nStep := 500; tWait := T#2S; bNext := TRUE;
+        END_IF
+
+    (* ---- Werkzeugwechsel bei offener Tuer ---- *)
+    500: (* Auto, Programm starten, M3 *)
+        IF tonStep.Q THEN
+            GVL_HMI.stCmd.eModeRequest := E_OpMode.Auto;
+            nStep := 502; tWait := T#800MS; bNext := TRUE;
+        END_IF
+
+    502:
+        IF tonStep.Q THEN
+            GVL_HMI.stCmd.bStart := TRUE;
+            nStep := 505; tWait := T#500MS; bNext := TRUE;
+        END_IF
+
+    505:
+        IF tonStep.Q THEN
+            GVL_Machine.bCncProgramActive := TRUE;
+            GVL_Machine.rCncSpindleRpm := 12000.0;
+            GVL_Machine.nCncMCode := 3; GVL_Machine.bCncMStrobe := TRUE;
+            nStep := 510; tWait := T#18S; bNext := TRUE;
+        END_IF
+
+    510: (* warten, bis die Spindel laeuft und M3 quittiert ist, dann M6 *)
+        IF (GVL_IO.bSpindleRun AND GVL_Machine.bCncMAck) OR tonStep.Q THEN
+            IF NOT GVL_IO.bSpindleRun THEN sMsg := 'T23 Spindel startet vor dem Werkzeugwechsel nicht'; bFailNow := TRUE; END_IF
+            GVL_Machine.bCncMStrobe := FALSE; GVL_Machine.nCncMCode := 0;
+            nStep := 512; tWait := T#300MS; bNext := TRUE;
+        END_IF
+
+    512:
+        IF tonStep.Q THEN
+            GVL_Machine.nCncMCode := 6; GVL_Machine.bCncMStrobe := TRUE;
+            nStep := 514; tWait := T#500MS; bNext := TRUE;
+        END_IF
+
+    514: (* T23a M6 loest Werkzeugwechsel aus, Spindel stoppt, Tuer noch nicht frei *)
+        IF tonStep.Q THEN
+            IF NOT GVL_HMI.stSts.bToolChangeReq THEN sMsg := 'T23a M6 loest keine Werkzeugwechsel-Aufforderung aus'; bFailNow := TRUE; END_IF
+            IF GVL_IO.bSpindleRun THEN sMsg := 'T23b Spindel laeuft bei Werkzeugwechsel weiter'; bFailNow := TRUE; END_IF
+            IF GVL_HMI.stSts.bToolChangeDoorRelease THEN sMsg := 'T23c Tuerfreigabe vor Spindelstillstand'; bFailNow := TRUE; END_IF
+            GVL_Machine.bCncMStrobe := FALSE; GVL_Machine.nCncMCode := 0;
+            nStep := 516; tWait := T#12S; bNext := TRUE;
+        END_IF
+
+    516: (* T23d Tuerfreigabe bei Stillstand, dann Tuer oeffnen *)
+        IF tonStep.Q THEN
+            IF NOT GVL_HMI.stSts.bToolChangeDoorRelease THEN sMsg := 'T23d Tuerfreigabe nach Spindelstillstand fehlt'; bFailNow := TRUE; END_IF
+            bDoor := FALSE;
+            nStep := 518; tWait := T#800MS; bNext := TRUE;
+        END_IF
+
+    518: (* T23e Tuer offen beim Wechsel: Programm bleibt gehalten, kein Abbruch *)
+        IF tonStep.Q THEN
+            IF GVL_HMI.stSts.eState <> E_MachState.Held THEN sMsg := 'T23e Tuer offen beim Werkzeugwechsel bricht das Programm ab'; bFailNow := TRUE; END_IF
+            IF GVL_Machine.bCncAbortReq THEN sMsg := 'T23f Abbruch an die CNC bei Tuer-Oeffnen im Werkzeugwechsel'; bFailNow := TRUE; END_IF
+            bDoor := TRUE;
+            nStep := 520; tWait := T#600MS; bNext := TRUE;
+        END_IF
+
+    520: (* Tuer zu, quittieren *)
+        IF tonStep.Q THEN
+            GVL_HMI.stCmd.bAck := TRUE;
+            nStep := 522; tWait := T#1500MS; bNext := TRUE;
+        END_IF
+
+    522: (* T23g weiter im Halt, dann Werkzeug gewechselt *)
+        IF tonStep.Q THEN
+            IF GVL_HMI.stSts.eState <> E_MachState.Held THEN sMsg := 'T23g nach Tuer zu und Quittieren nicht im Halt'; bFailNow := TRUE; END_IF
+            GVL_HMI.stCmd.bToolChangeDone := TRUE;
+            nStep := 524; tWait := T#600MS; bNext := TRUE;
+        END_IF
+
+    524: (* T23h Wechsel beendet, Fortsetzen nur mit Start, Spindel startet nicht von selbst *)
+        IF tonStep.Q THEN
+            IF GVL_HMI.stSts.bToolChangeReq THEN sMsg := 'T23h Werkzeugwechsel nicht beendet'; bFailNow := TRUE; END_IF
+            IF GVL_HMI.stSts.eState <> E_MachState.Held THEN sMsg := 'T23i Programm laeuft ohne Start weiter'; bFailNow := TRUE; END_IF
+            GVL_HMI.stCmd.bStart := TRUE;
+            nStep := 526; tWait := T#700MS; bNext := TRUE;
+        END_IF
+
+    526: (* T23j Fortsetzen, Spindel aus; dann Tuer oeffnen ohne Werkzeugwechsel *)
+        IF tonStep.Q THEN
+            IF GVL_HMI.stSts.eState <> E_MachState.Execute THEN sMsg := 'T23j Fortsetzen nach Werkzeugwechsel nicht moeglich'; bFailNow := TRUE; END_IF
+            IF GVL_IO.bSpindleRun THEN sMsg := 'T23k Spindel startet nach Werkzeugwechsel von selbst'; bFailNow := TRUE; END_IF
+            bDoor := FALSE;
+            nStep := 528; tWait := T#800MS; bNext := TRUE;
+        END_IF
+
+    528: (* T24 Tuer offen im Programm ohne Werkzeugwechsel: NOT-HALT, Abbruch an die CNC *)
+        IF tonStep.Q THEN
+            IF GVL_HMI.stSts.eState <> E_MachState.EStop THEN sMsg := 'T24 Tuer offen im Programm fuehrt nicht zu NOT-HALT'; bFailNow := TRUE; END_IF
+            IF NOT GVL_Machine.bCncAbortReq THEN sMsg := 'T24b Tuer offen im Programm: kein Abbruch an die CNC'; bFailNow := TRUE; END_IF
+            bDoor := TRUE;
+            GVL_Machine.bCncProgramActive := FALSE;
+            nStep := 530; tWait := T#600MS; bNext := TRUE;
+        END_IF
+
+    530:
+        IF tonStep.Q THEN
+            GVL_HMI.stCmd.bAck := TRUE;
+            nStep := 532; tWait := T#1000MS; bNext := TRUE;
+        END_IF
+
+    532:
+        IF tonStep.Q THEN
+            GVL_HMI.stCmd.bAck := TRUE;
+            nStep := 534; tWait := T#1500MS; bNext := TRUE;
+        END_IF
+
+    534: (* zurueck in Hand *)
+        IF tonStep.Q THEN
+            IF GVL_HMI.stSts.eState <> E_MachState.Idle THEN sMsg := 'T24c Quittierung nach Tuer-NOT-HALT fuehrt nicht nach Idle'; bFailNow := TRUE; END_IF
+            GVL_HMI.stCmd.eModeRequest := E_OpMode.Hand;
+            GVL_Machine.rCncSpindleRpm := 0.0;
+            nStep := 200; tWait := T#600MS; bNext := TRUE;
         END_IF
 
     200: (* Ende *)

@@ -13,6 +13,7 @@ VAR_OUTPUT
     nRequestedTool : UINT;
     bHoldProgram : BOOL;      (* CNC wartet, bis quittiert *)
     bSpindleLock : BOOL;      (* Spindel gesperrt waehrend Wechsel *)
+    bDoorRelease : BOOL;      (* Tuer darf geoeffnet werden: Werkzeugwechsel angefordert und Spindel steht. Eine offene Tuer bricht dann das Programm nicht ab. *)
 END_VAR
 VAR
     rtM6 : R_TRIG;
@@ -30,4 +31,9 @@ bSpindleLock := bRequest;
 IF bRequest AND ((rtConfirm.Q AND bSpindleStopped) OR bAbort) THEN
     bRequest := FALSE;
 END_IF
+
+(* Tuerfreigabe fuer den Werkzeugwechsel: erst bei Spindelstillstand. Die Abschaltung der Antriebe macht weiter die
+   feste Verdrahtung (Pilz). Die SPS entscheidet nur zwischen Halt (Wechsel) und Abbruch. [offen] Risikobeurteilung:
+   Zustimmtaster, Schluesselschalter, sichere Spindelstillstandsueberwachung. *)
+bDoorRelease := bRequest AND bSpindleStopped;
 END_FUNCTION_BLOCK

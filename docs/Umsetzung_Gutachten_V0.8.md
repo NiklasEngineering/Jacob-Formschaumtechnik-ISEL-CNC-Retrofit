@@ -9,9 +9,9 @@ auf frisch gestarteter Runtime (Tests T01 bis T22, siehe Test_Simulation_Ergebni
 | G-02 | Vorschubhalt nur Impuls | **behoben**: Pegel, solange Held; Programmende in Held fuehrt nach Idle (T20). HLI-Semantik bei Anbindung klaeren. |
 | G-03 | M3/M4 sofort quittiert | **behoben in der Logik**: Quittung erst bei laufender Spindel, nicht bei bewusst gesperrter Spindel (Einrichten, Trockenlauf), nicht quittiert wenn nicht ausfuehrbar (T19). **Offen:** unbekannter M-Code wird nicht quittiert, hat aber keine eigene Meldung. |
 | G-04 | Vakuum bei Abbruch/NOT-HALT | **vorsichtig entschieden, Kundenfrage offen**: Vakuum bleibt gehalten, geht nur mit M11, M30/M2 oder von Hand aus (T21, T22). |
-| G-05 | Werkzeugwechsel bei Abbruch | **teilweise**: Anforderung wird bei Abbruch, R3 und NOT-HALT geloescht. Spindelstart nach M6 nur ueber neues M3. Ablauf bei offener Tuer ist Kundenfrage. Nicht einzeln getestet. |
+| G-05 | Werkzeugwechsel, Tuer | **behoben nach Vorgabe Simon**: Bei M6 haelt das Programm, die Spindel stoppt, bei Stillstand gibt die SPS die Tuer frei (`stSts.bToolChangeDoorRelease`). Offene Tuer in diesem Zustand haelt das Programm, bricht es nicht ab (T23). Nach Tuer zu, Quittieren und "Werkzeug gewechselt" geht es nur mit Start weiter, die Spindel startet nur ueber neues M3. In jedem anderen Zustand bleibt eine offene Tuer ein Abbruch (T24). Die Antriebe nimmt weiter die Pilz-Verdrahtung weg. **Offen:** Risikobeurteilung (Zustimmtaster, Schluesselschalter, sichere Spindelstillstandsueberwachung). |
 | G-06 | PRG_Test im Produktivstand | **behoben**: Test laeuft nur mit Simulationsabbild, `bSimulationBuild` ist aus `eDriveVariant` abgeleitet, Einspeisung (Endschalter, Fehler) wirkt nur im Simulationsabbild. **Offen vor Hardware:** Test per Compilerschalter oder eigene Instanz ganz entfernen. |
-| G-07 | Bedienen von jeder HMI-Sitzung | **offen**: HMI-Rechte (nur lokales Panel bedient, Fernzugriff lesend), SPS-Client-Kennung. Kundenfrage. |
+| G-07 | Bedienen von jeder HMI-Sitzung | **Entscheidung Simon: Fernzugriff nur lesend.** HMI-Thread: Bedienen nur vom lokalen Panel (Benutzerrechte), SPS-Client-Kennung noch offen. |
 | G-08 | R4-Verzoegerung bei Gantry-Fehler | **offen**: haengt an Gantry-Parametrierung der CNC. |
 | G-09 | CNC-Reset bei haengendem Abbruch | **offen**: braucht CNC-Anbindung. |
 | G-10 | Referenzverlust im Programm | **behoben**: im laufenden oder gehaltenen Programm wirkt er wie R3, sonst Warnung R1. Nicht einzeln getestet. |
@@ -33,9 +33,9 @@ auf frisch gestarteter Runtime (Tests T01 bis T22, siehe Test_Simulation_Ergebni
 - Meldeklassen: 200 und 302 R3, 320 R1 (Referenzverlust im Programm wirkt wie R3).
 
 ## Drei Kundenfragen (offen)
-1. Vakuum: Werkstueckspannung? Im NOT-HALT-Kreis? (SPS haelt es bis auf weiteres.)
-2. M6 bei offener Tuer: Wechsel mit Zustimmtaster und gehaltenen Achsen zulassen?
-3. Fernzugriff: nur lesen oder auch bedienen? (Empfehlung: nur lesen.)
+1. Vakuum: Werkstueckspannung? Im NOT-HALT-Kreis? Klaerungsliste Funktionen 2.7.6 nennt "Werkstueckspannung (Vakuum oder Klemmung), isel M10/M11", vom Kunden nicht beantwortet. (SPS haelt es bis auf weiteres.)
+2. M6 bei offener Tuer: **geklaert (Simon): Bediener oeffnet die Tuer.** Umgesetzt (siehe G-05), Risikobeurteilung offen.
+3. Fernzugriff: **geklaert (Simon): nur lesend.**
 
 ## Hinweis zum Test
 Der Simulationstest ist gegen aeussere Schreibzugriffe empfindlich: Laeuft gleichzeitig ein HMI-Client, der Lebenszeichen oder Kommandos schreibt, schlagen einzelne Pruefungen sporadisch fehl (beobachtet in zwei Laeufen, zwei saubere Laeufe danach). Test ohne laufende HMI-Clients fahren.

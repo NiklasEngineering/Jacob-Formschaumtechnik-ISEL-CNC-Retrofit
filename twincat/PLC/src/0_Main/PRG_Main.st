@@ -50,6 +50,7 @@ VAR
     bSpindleLocked   : BOOL;
     bVacuumReq       : BOOL;
     bHomingLostInRun : BOOL;
+    bToolChangeDoor  : BOOL;
 END_VAR
 
 (* 1. Parameter: initialisieren und pruefen, bei unplausiblen Werten bleibt die Maschine gesperrt *)
@@ -95,8 +96,11 @@ fbSupervisor(bEnableCmd := fbState.bEnableDrives, bFieldbusOk := GVL_IO.bFieldbu
 bStandstill := fbSpindle.bStandstillOk AND fbState.eState <> E_MachState.Execute AND NOT fbJog.bJogPlusReq AND NOT fbJog.bJogMinusReq;
 
 (* 4. Meldungen *)
-aCond[0]  := NOT GVL_IO.bSafetyRelayFeedback;
-aCond[1]  := NOT GVL_IO.bDoorClosed;
+(* Werkzeugwechsel mit Tuerfreigabe: Tuer offen und Spindel steht. Dann sind Tuer-Meldung und das dadurch abfallende
+   Sicherheitsrelais kein Abbruchgrund, das Programm bleibt gehalten. Sonst ist eine offene Tuer weiter ein Abbruch. *)
+bToolChangeDoor := fbTool.bDoorRelease AND NOT GVL_IO.bDoorClosed AND GVL_IO.bFieldbusOk;
+aCond[0]  := NOT GVL_IO.bSafetyRelayFeedback AND NOT bToolChangeDoor;
+aCond[1]  := NOT GVL_IO.bDoorClosed AND NOT bToolChangeDoor;
 aCond[2]  := GVL_Machine.stParams.bAirMonitoring AND NOT GVL_IO.bAirOk;
 (* Absaugung: Rueckmeldung darf nach dem Einschalten tFeedbackTimeout dauern (Befund 12) *)
 tonExtraction(IN := NOT GVL_IO.bExtractionOk AND GVL_IO.bExtractionOut, PT := GVL_Machine.stParams.tFeedbackTimeout);
@@ -161,7 +165,8 @@ fbState(bSafetyOk := fbSafety.bSafetyOk, bDrivesAllowed := fbSafety.bDrivesAllow
         bStartCmd := GVL_HMI.stCmd.bStart, bHoldCmd := GVL_HMI.stCmd.bHold OR fbMFunc.bProgramHalt,
         bAbortCmd := GVL_HMI.stCmd.bAbort, bProgramDone := GVL_Machine.bCncProgramDone,
         bProgramActive := GVL_Machine.bCncProgramActive,
-        bAck := GVL_HMI.stCmd.bAck, tR4OffDelay := GVL_Config.tR4DriveOffDelay);
+        bAck := GVL_HMI.stCmd.bAck, tR4OffDelay := GVL_Config.tR4DriveOffDelay,
+        bDoorOpenAllowed := bToolChangeDoor);
 
 (* 7. Geraete: Spindel (M3/M4 aus Programm, in Hand von der HMI) *)
 (* Hand-Spindel: Nach Lebenszeichenverlust oder ausserhalb Hand setzt die SPS bSpindleOn zurueck und sperrt,
@@ -302,6 +307,7 @@ GVL_HMI.stSts.dwOperatingSec := GVL_Persistent.nOperatingSec;
 GVL_HMI.stSts.dwSpindleSec   := GVL_Persistent.nSpindleSec;
 GVL_HMI.stSts.nHeartbeatEcho := GVL_HMI.stCmd.nHeartbeat;
 GVL_HMI.stSts.bLimitFreeRun  := bLimitFreeRun;
+GVL_HMI.stSts.bToolChangeDoorRelease := fbTool.bDoorRelease;
 GVL_HMI.stSts.bHandwheelActive := GVL_Machine.bCncHandwheel;
 GVL_HMI.stSts.eHomeState[1]  := fbHoming.eHomeState[2];   (* X *)
 GVL_HMI.stSts.eHomeState[2]  := fbHoming.eHomeState[3];   (* Y *)

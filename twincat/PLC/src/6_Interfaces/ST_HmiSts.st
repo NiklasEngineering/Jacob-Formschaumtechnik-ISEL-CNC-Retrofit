@@ -34,5 +34,6 @@ STRUCT
     bModeChangeBlocked: BOOL;  (* Betriebsartenwunsch abgelehnt *)
     nHeartbeatEcho  : UINT;    (* Rueckspiegel stCmd.nHeartbeat, Befund 16 *)
     bLimitFreeRun   : BOOL;    (* Endschalter angefahren, Freifahren in Hand im Schleichgang moeglich, Befund 15 *)
+    bToolChangeDoorRelease : BOOL;  (* Werkzeugwechsel: Spindel steht, Tuer darf geoeffnet werden *)
 END_STRUCT
 END_TYPE

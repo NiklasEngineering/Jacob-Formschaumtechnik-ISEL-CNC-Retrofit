@@ -19,6 +19,7 @@ VAR_INPUT
     bProgramActive  : BOOL;     (* von der CNC: Programm laeuft oder Achsen fahren noch *)
     bAck            : BOOL;
     tR4OffDelay     : TIME := T#500MS;   (* Befund 15: Reglerfreigabe faellt bei R4 erst, wenn die CNC steht oder nach dieser Zeit *)
+    bDoorOpenAllowed : BOOL;    (* Werkzeugwechsel mit Tuerfreigabe: offene Tuer haelt das Programm an, bricht es nicht ab *)
 END_VAR
 VAR_OUTPUT
     eState          : E_MachState;
@@ -48,7 +49,10 @@ bCncStart := FALSE; bCncHold := FALSE; bSpindleStop := FALSE;
 ePrev := eState;
 
 (* Vorrang 1: Sicherheitskreis offen -> NOT-HALT-Zustand, Antriebe aus, Programm abbrechen *)
-IF NOT bSafetyOk THEN
+IF NOT bSafetyOk AND bDoorOpenAllowed AND (eState = E_MachState.Execute OR eState = E_MachState.Held) THEN
+    (* Werkzeugwechsel bei Spindelstillstand: Tuer offen = Halt, kein Abbruch. Antriebe nimmt die Verdrahtung weg. *)
+    IF eState = E_MachState.Execute THEN eState := E_MachState.Held; END_IF
+ELSIF NOT bSafetyOk THEN
     IF eState = E_MachState.Execute OR eState = E_MachState.Held THEN
         bAbortPending := TRUE;
     END_IF
